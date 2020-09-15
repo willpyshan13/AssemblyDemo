@@ -1,0 +1,49 @@
+gplink-2.2.18 (Apr 13 2020)
+Listing File Generated: 2020-9-14  00:20:57
+ 
+ 
+Address  Value    Disassembly              Source
+-------  -----    -----------              ------
+                                           #include "MC35P7040.INC"
+                                           		LIST
+                                           ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                                           		NOLIST
+                                           
+                                           #define	   	led	   	IOP0,0
+                                           #define	   	key	   	IOP0,0
+                                           
+                                           ORG   	0x03ff
+0003ff   8001     goto    0x1              GOTO  	start  	
+                                           ORG   	0x00
+000000   8001     goto    0x1              GOTO  	start
+                                           
+                                           start:
+000001   2bd0     clrr    0xd0                 CLRR   	IOP0 	   	   	;清P0和P1口
+000002   2d00     movai   0                   	MOVAI  	   	0x00   	   	   	
+000003   1fd0     movra   0xd0                 MOVRA  	IOP0   	   	;设置P0口的端口方向
+000004   2d01     movai   0x1                  MOVAI  	0x01
+000005   1fd0     movra   0xd0                 MOVRA  	IOP0    	   	;设置P1口的端口方向
+000006   2dfe     movai   0xfe                 MOVAI  	0xfe
+000007   2de0     movai   0xe0                 MOVAI  	PUP0  	   	;设置上拉电阻
+                                           check:
+000008   50d0     jbclr   0xd0, 0              JBCLR  	key	   	   	;这里只是简单的判断按键有没有按下，未进行消抖
+000009   800b     goto    0xb                  GOTO   	close
+00000a   800d     goto    0xd                  GOTO   	open
+                                           close:    
+00000b   40d0     bclr    0xd0, 0              BCLR   	led
+00000c   8008     goto    0x8                  GOTO   	check
+                                           open:
+00000d   48d0     bset    0xd0, 0             	BSET   	led
+00000e   8008     goto    0x8                 	GOTO   	check
+                                              	END	
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXX-- ---------------- ----------------
+07C0 : ---------------- ---------------- ---------------- --------------XX
+
+All other memory blocks unused.
+
+Program Memory Words Used:    16
+

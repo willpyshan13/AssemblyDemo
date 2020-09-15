@@ -1,0 +1,4 @@
+main(0)
+|--Sys_Init(1)
+|--|--CLR_RAM(2)
+|--|--IO_Init(2)

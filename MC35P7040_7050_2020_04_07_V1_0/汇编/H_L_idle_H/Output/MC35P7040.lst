@@ -1,0 +1,161 @@
+gplink-2.2.18 (Apr 13 2020)
+Listing File Generated: 2020-9-16  00:08:22
+ 
+ 
+Address  Value    Disassembly              Source
+-------  -----    -----------              ------
+                                           ;******************************************************************************
+                                           ;  *   	@MCU   	   	   	   	 : MC35P7040
+                                           ;  *   	@Create Date         : 2020.01.09
+                                           ;  *   	@Author/Corporation  : Martin/SinoMCU
+                                           ;  *   	@技术支持QQ群   	  : 814641858      
+                                           ;  *    @晟矽微官方论坛   	  : http://bbs.sinomcu.com/	 
+                                           ;  *   	@Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+                                           ;  *----------------------Abstract Description---------------------------------    	
+                                           ;  *            高频-低频-空闲模式-低频-高频-IO翻转 2S T0唤醒一次，  
+                                           ;                P01翻转200次输出
+                                           ;                P54D 2S翻转
+                                           ;                模式切换可根据数据手册 模式切换示意图 修改；
+                                           ;******************************************************************************
+                                           #include "MC35P7040.INC"
+                                           		LIST
+                                           ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                                           		NOLIST
+                                           
+                                           num	EQU	0x00
+                                           
+                                              	ORG     0x0000
+000000   8016     goto    0x16                	goto   	MAIN
+                                               ORG     0x08
+                                           INT_ISR:
+000008   0400     push                        	push
+000009   5dc8     jbset   0xc8, 0x5           	JBSET  	T0IF
+00000a   8014     goto    0x14                	GOTO   	TIMER0_END
+00000b   5dc9     jbset   0xc9, 0x5           	JBSET  	T0IE
+00000c   8014     goto    0x14                	GOTO   	TIMER0_END
+00000d   45c8     bclr    0xc8, 0x5           	BCLR   	T0IF
+00000e   2d04     movai   0x4                  MOVAI   00000100B
+00000f   1cd0     xorra   0xd0                	XORRA   IOP0   	   	    ;  P03D取反 
+000010   2d10     movai   0x10                 MOVAI  	00010000B
+000011   1cd5     xorra   0xd5                	XORRA  	IOP5   	   	    ;  P54D取反  
+000012   2d01     movai   0x1                  MOVAI   00000001B
+000013   1cd4     xorra   0xd4                	XORRA   IOP4   	   	    ;  P40D取反      	
+                                           TIMER0_END:
+000014   0500     pop                         	pop
+000015   0f00     retie                       	RETIE  	
+                                           
+                                           MAIN:
+000016   c043     call    0x43                	CALL   	Sys_Init
+                                           MAIN_LOOP:
+000017   47b1     bclr    0xb1, 0x7           	BCLR   	ADEN    ;关闭外设  
+000018   4aca     bset    0xca, 0x2           	BSET   	CLKS    ;切换到低频 4t
+000019   0000     nop                         	nop
+00001a   49ca     bset    0xca, 0x1           	BSET   	HFDE   	   	   	   	   	   
+00001b   2d83     movai   0x83                	MOVAI  	256-125
+00001c   1fdb     movra   0xdb                	MOVRA  	T0CNT
+00001d   4fda     bset    0xda, 0x7           	BSET   	T0EN
+00001e   4dc9     bset    0xc9, 0x5           	BSET   	T0IE
+00001f   2bc8     clrr    0xc8                	CLRR   	INTF
+000020   0000     nop                         	nop
+000021   0000     nop                         	nop
+000022   2de7     movai   0xe7                	MOVAI  	0xe7
+000023   29ca     andra   0xca                	ANDRA  	OSCM
+000024   4cca     bset    0xca, 0x4           	BSET   	OSCM,4 ;绿色模式
+000025   0000     nop                         	nop
+000026   0000     nop                         	nop    	   	  
+000027   0000     nop                         	nop
+000028   45c9     bclr    0xc9, 0x5           	BCLR   	T0IE
+000029   47da     bclr    0xda, 0x7           	BCLR   	T0EN
+00002a   41ca     bclr    0xca, 0x1           	BCLR   	HFDE    ;打开高频  (用户自己选择)
+00002b   0000     nop                         	nop
+00002c   0000     nop                         	nop
+00002d   42ca     bclr    0xca, 0x2           	BCLR   	CLKS    ;切换到高频(用户自己选择)
+00002e   4fb1     bset    0xb1, 0x7           	BSET   	ADEN    ;开启相应的外设  (用户自己选择)
+00002f   2b00     clrr    0                    CLRR    num
+                                           IO_OUT_P01:
+000030   1600     jzr     0                    JZR    num
+000031   0000     nop                          nop
+000032   2d13     movai   0x13                 MOVAI  	19
+000033   2200     asubar  0                    ASUBAR 	num
+000034   5a86     jbset   0x86, 0x2            JBSET  	C
+000035   8017     goto    0x17                 GOTO   	MAIN_LOOP 
+000036   2d02     movai   0x2                  MOVAI  	00000010B
+000037   1cd0     xorra   0xd0                	XORRA  	IOP0   	   	    ;  P01D取反
+000038   2d02     movai   0x2                 	MOVAI  	00000010B
+000039   1cd4     xorra   0xd4                	XORRA  	IOP4   	   	    ;  P44D取反
+00003a   0000     nop                         	nop
+00003b   0000     nop                         	nop
+00003c   0000     nop                         	nop
+00003d   0000     nop                         	nop
+00003e   0000     nop                         	nop
+00003f   0000     nop                         	nop
+000040   0000     nop                         	nop
+000041   0000     nop                         	nop
+000042   8030     goto    0x30                	GOTO   	IO_OUT_P01
+                                           
+                                           Sys_Init:
+000043   47df     bclr    0xdf, 0x7           	BCLR   	GIE
+000044   c060     call    0x60                	CALL   	CLR_RAM
+000045   c052     call    0x52                	CALL   	IO_Init
+000046   c049     call    0x49                	CALL   	TIMER0_INT_Init  
+000047   4fdf     bset    0xdf, 0x7           	BSET   	GIE
+000048   0e00     return                      	RETURN 	
+                                           ; exit point of _Sys_Init
+                                           
+                                           TIMER0_INT_Init:
+000049   2d06     movai   0x6                 	MOVAI  	0x06
+00004a   1fd8     movra   0xd8                	MOVRA  	TMRCR   ;T1CLK=FCPU/2      T0CLK=Fosc    允许T0溢出唤醒
+00004b   2d14     movai   0x14                	MOVAI  	0x14
+00004c   1fda     movra   0xda                	MOVRA  	T0CR   ;开启T0    128分频  T0CLK内部时钟  自动重载  关闭PWM
+00004d   2d83     movai   0x83                	MOVAI  	0x83
+00004e   1fdb     movra   0xdb                	MOVRA  	T0CNT  ;T0CNT=256-125;
+00004f   2d83     movai   0x83                	MOVAI  	0x83
+000050   1fcd     movra   0xcd                	MOVRA  	T0LDR  ;进入低频后   32k/4/128=2s    低频模式固定4t
+000051   0e00     return                      	RETURN 	
+                                           ; exit point of _TIMER0_INT_Init
+                                           
+                                           IO_Init:   	
+000052   2bd0     clrr    0xd0                	CLRR   	IOP0
+000053   2dff     movai   0xff                	MOVAI  	0xff
+000054   1fb8     movra   0xb8                	MOVRA  	OEP0   ;io口方向 1:out  0:in  
+000055   2d00     movai   0                   	MOVAI  	0x00
+000056   1fe0     movra   0xe0                	MOVRA  	PUP0   ;io口上拉电阻   1:enable  0:disable
+000057   2bd4     clrr    0xd4                	CLRR   	IOP4   ;io口数据位
+000058   2dff     movai   0xff                	MOVAI  	0xff
+000059   1fc4     movra   0xc4                	MOVRA  	OEP4   ;io口方向 1:out  0:in   
+00005a   2be4     clrr    0xe4                	CLRR   	PUP4   ;io口上拉电阻   1:enable  0:disable
+00005b   2bd5     clrr    0xd5                	CLRR   	IOP5   ;io口数据位
+00005c   2dff     movai   0xff                	MOVAI  	0xff    ;io口方向 1:out  0:in  
+00005d   1fc5     movra   0xc5                	MOVRA  	OEP5
+00005e   2be5     clrr    0xe5                	CLRR   	PUP5   ;io口上拉电阻   1:enable  0:disable
+                                              	;MOVAI  	0xff
+                                              	;MOVRA  	P4CON
+00005f   0e00     return                      	RETURN 	
+                                           ; exit point of _IO_Init
+                                           
+                                           CLR_RAM:   	
+000060   2d01     movai   0x1                 	movai 0x01
+000061   1f83     movra   0x83                	movra FSR0
+000062   2b84     clrr    0x84                	clrr FSR1
+000063   2be7     clrr    0xe7                	clrr INDF
+000064   2683     djzr    0x83                	DJZR FSR0
+000065   8063     goto    0x63                	goto $-2
+000066   2be7     clrr    0xe7                	clrr INDF
+000067   0e00     return                      	RETURN 	
+                                           ; exit point of _CLR_RAM
+                                           
+                                           
+                                              	end
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : XX-------------- XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0080 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+00C0 : XXXXXXXXXXXXXXXX ---------------- ---------------- ----------------
+
+All other memory blocks unused.
+
+Program Memory Words Used:    97
+

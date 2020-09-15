@@ -1,0 +1,412 @@
+gpasm-2.2.18 (Apr 13 2020)   MC35P7040.asm      2020-9-14  00:07:23          PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ;******************************************************************************
+                      00002 ;  *    @MCU                             : MC35P7040
+                      00003 ;  *    @Create Date         : 2020.01.09
+                      00004 ;  *    @Author/Corporation  : Martin/SinoMCU
+                      00005 ;  *    @技术支持QQ群             : 814641858      
+                      00006 ;  *    @晟矽微官方论坛           : http://bbs.sinomcu.com/      
+                      00007 ;  *    @Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+                      00008 ;  *----------------------Abstract Description---------------------------------         
+                      00009 ;  *           P00,P01上拉，外部中断下降沿触发，P02、P03翻转（未消抖处理）
+                      00010 ;******************************************************************************
+                      00011 #include "MC35P7040.INC"   
+                      00001                 LIST
+                      00002 ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                      00460                 LIST
+                      00012 
+                      00013     ORG         0x0000
+0000   8000           00014         goto    MAIN
+                      00015         ORG             0x8
+                      00016 
+0008                  00017 INT_ISR:
+0008   0400           00018         push
+0009   58C8           00019         JBSET   INT0IF
+000A   8000           00020         GOTO    INT1_INTERR
+000B   58C9           00021         JBSET   INT0IE
+000C   8000           00022         GOTO    INT1_INTERR
+000D   40C8           00023         BCLR    INT0IF
+000E   2D10           00024     MOVAI       00010000B
+000F   1CD5           00025         XORRA   IOP5                ;  P54D取反
+                      00026 
+                      00027 
+0010                  00028 INT1_INTERR:
+0010   59C8           00029         JBSET   INT1IF
+0011   8000           00030         GOTO    INT_END
+0012   59C9           00031         JBSET   INT1IE
+0013   8000           00032         GOTO    INT_END
+0014   41C8           00033         BCLR    INT1IF
+0015   2D08           00034     MOVAI       00001000B
+0016   1CD0           00035         XORRA   IOP0                ;  P03D取反
+                      00036 
+0017                  00037 INT_END:
+0017   0F00           00038         RETIE   
+                      00039 
+0018                  00040 MAIN:   
+0018   C000           00041         CALL    Sys_Init
+0019                  00042 MAIN_LOOP:
+0019   8000           00043         GOTO    MAIN_LOOP
+001A   0E00           00044         RETURN  
+                      00045 ; exit point of main
+                      00046 
+001B                  00047 Sys_Init:
+001B   47DF           00048         BCLR    GIE
+001C   C000           00049         CALL    CLR_RAM
+001D   C000           00050         CALL    IO_Init
+001E   C000           00051         CALL    INT_Init  
+001F   4FDF           00052         BSET    GIE
+0020   0E00           00053         RETURN  
+                      00054 ; exit point of Sys_Init
+                      00055 
+0021                  00056 INT_Init:       
+0021   48C9           00057         BSET    INT0IE
+0022   49C9           00058         BSET    INT1IE  ;使能外部中断
+0023   2D10           00059         MOVAI   0x10    
+0024   1FBF           00060         MOVRA   EINTCR  ;下降沿触发
+0025   0E00           00061         RETURN  
+                      00062 ; exit point of INT_Init
+                      00063 
+0026                  00064 IO_Init:
+0026   2BD0           00065         CLRR    IOP0    ;io口数据位
+0027   2DFC           00066         MOVAI   0xfc
+0028   1FB8           00067         MOVRA   OEP0    ;io口方向 1:out  0:in  
+0029   2D03           00068         MOVAI   0x03
+002A   1FE0           00069         MOVRA   PUP0    ;io口上拉电阻   1:enable  0:disable
+002B   2BD4           00070         CLRR    IOP4    ;io口数据位
+002C   2DF0           00071         MOVAI   0xf0
+002D   1FC4           00072         MOVRA   OEP4    ;io口方向 1:out  0:in   
+002E   2BE4           00073         CLRR    PUP4    ;io口上拉电阻   1:enable  0:disable
+002F   2BD5           00074         CLRR    IOP5    ;io口数据位
+0030   2DFF           00075         MOVAI   0xff
+0031   1FC5           00076         MOVRA   OEP5    ;io口方向 1:out  0:in  
+0032   2BE5           00077         CLRR    PUP5    ;io口上拉电阻   1:enable  0:disable
+0033   2DFF           00078         MOVAI   0xff
+0034   1FAE           00079         MOVRA   P4CON
+0035   0E00           00080         RETURN  
+                      00081 ; exit point of IO_Init
+                      00082 
+0036                  00083 CLR_RAM:
+0036   2D3F           00084         movai 0x3F
+0037   1F83           00085         movra FSR0
+0038   2B84           00086         clrr FSR1
+0039   2BE7           00087         clrr INDF
+003A   2683           00088         DJZR FSR0
+003B   8000           00089         goto $-2
+003C   2BE7           00090         clrr INDF
+003D   0E00           00091         RETURN  
+                      00092 ; exit point of CLR_RAM
+                      00093 
+                      00094 
+                      00095         end
+gpasm-2.2.18 (Apr 13 2020)   MC35P7040.asm      2020-9-14  00:07:23          PAGE  2
+
+
+SYMBOL TABLE
+  LABEL                             VALUE
+
+ADB                               000000B2
+ADM                               000000B1
+ADR                               000000B3
+ADT                               000000B4
+CLR_RAM                           00000036
+EINTCR                            000000BF
+FSR0                              00000083
+FSR1                              00000084
+HIBYTE                            00000082
+INDF                              000000E7
+INT1_INTERR                       00000010
+INTE                              000000C9
+INTF                              000000C8
+INT_END                           00000017
+INT_ISR                           00000008
+INT_Init                          00000021
+IOP0                              000000D0
+IOP4                              000000D4
+IOP5                              000000D5
+IO_Init                           00000026
+MAIN                              00000018
+MAIN_LOOP                         00000019
+MCR                               000000DF
+OEP0                              000000B8
+OEP4                              000000C4
+OEP5                              000000C5
+OSCM                              000000CA
+P4CON                             000000AE
+PCH                               000000CF
+PCL                               000000CE
+PFLAG                             00000086
+PUP0                              000000E0
+PUP4                              000000E4
+PUP5                              000000E5
+STKR0H                            000000FF
+STKR0L                            000000FE
+STKR1H                            000000FD
+STKR1L                            000000FC
+STKR2H                            000000FB
+STKR2L                            000000FA
+STKR3H                            000000F9
+STKR3L                            000000F8
+Sys_Init                          0000001B
+T0CNT                             000000DB
+T0CR                              000000DA
+T0LDR                             000000CD
+T1CNT                             000000DD
+T1CR                              000000DC
+T1LDR                             000000DE
+TMRCR                             000000D8
+VREFCR                            000000AF
+WDTCR                             000000CC
+_.org_8_003B                      0000003B
+_CONFIG0                          00008000
+_CONFIG1                          00008001
+__35P7040                         00000001
+ADB0                              ADR,0
+ADB1                              ADR,1
+ADB10                             ADB,6
+ADB11                             ADB,7
+ADB2                              ADR,2
+ADB3                              ADR,3
+ADB4                              ADB,0
+ADB5                              ADB,1
+ADB6                              ADB,2
+ADB7                              ADB,3
+ADB8                              ADB,4
+ADB9                              ADB,5
+ADCHS0                            ADM,0
+ADCHS1                            ADM,1
+ADCHS2                            ADM,2
+ADCKS0                            ADR,4
+ADCKS1                            ADR,6
+ADEN                              ADM,7
+ADEOC                             ADM,5
+ADIE                              INTE,7
+ADIF                              INTF,7
+ADSTR                             ADM,6
+ADTR0                             ADT,0
+ADTR1                             ADT,1
+ADTR2                             ADT,2
+ADTR3                             ADT,3
+ADTR4                             ADT,4
+ADTS0                             ADT,6
+ADTS1                             ADT,7
+ADVRS0                            VREFCR,0
+ADVRS1                            VREFCR,1
+BUZ0OE                            T0CR,1
+BUZ1OE                            T1CR,1
+C                                 PFLAG,2
+CLKS                              OSCM,2
+CPUM0                             OSCM,3
+CPUM1                             OSCM,4
+DC                                PFLAG,1
+FSR00                             FSR0,0
+FSR01                             FSR0,1
+FSR02                             FSR0,2
+FSR03                             FSR0,3
+FSR04                             FSR0,4
+FSR05                             FSR0,5
+FSR06                             FSR0,6
+FSR07                             FSR0,7
+FSR10                             FSR1,0
+FSR11                             FSR1,1
+FSR12                             FSR1,2
+FSR13                             FSR1,3
+FSR14                             FSR1,4
+FSR15                             FSR1,5
+FSR16                             FSR1,6
+FSR17                             FSR1,7
+GCHS                              ADM,4
+GIE                               MCR,7
+HFDE                              OSCM,1
+HIBYTE0                           HIBYTE,0
+HIBYTE1                           HIBYTE,1
+HIBYTE2                           HIBYTE,2
+HIBYTE3                           HIBYTE,3
+HIBYTE4                           HIBYTE,4
+HIBYTE5                           HIBYTE,5
+HIBYTE6                           HIBYTE,6
+HIBYTE7                           HIBYTE,7
+INDF0                             INDF,0
+INDF1                             INDF,1
+INDF2                             INDF,2
+INDF3                             INDF,3
+INDF4                             INDF,4
+INDF5                             INDF,5
+INDF6                             INDF,6
+INDF7                             INDF,7
+INT0IE                            INTE,0
+INT0IF                            INTF,0
+INT1IE                            INTE,1
+INT1IF                            INTF,1
+LVD24                             PFLAG,4
+LVD36                             PFLAG,5
+MINT00                            EINTCR,3
+MINT01                            EINTCR,4
+P00D                              IOP0,0
+P00OE                             OEP0,0
+P00PU                             PUP0,0
+P01D                              IOP0,1
+P01OE                             OEP0,1
+P01PU                             PUP0,1
+P02D                              IOP0,2
+P02OE                             OEP0,2
+P02PU                             PUP0,2
+P03D                              IOP0,3
+P03OE                             OEP0,3
+P03PU                             PUP0,3
+P04D                              IOP0,4
+P04OE                             OEP0,4
+P04PU                             PUP0,4
+P40CON                            P4CON,0
+P40D                              IOP4,0
+P40OE                             OEP4,0
+P40PU                             PUP4,0
+P41CON                            P4CON,1
+P41D                              IOP4,1
+P41OE                             OEP4,1
+P41PU                             PUP4,1
+P42CON                            P4CON,2
+P42D                              IOP4,2
+P42OE                             OEP4,2
+P42PU                             PUP4,2
+P43CON                            P4CON,3
+P43D                              IOP4,3
+P43OE                             OEP4,3
+P43PU                             PUP4,3
+P44CON                            P4CON,4
+P44D                              IOP4,4
+P44OE                             OEP4,4
+P44PU                             PUP4,4
+P53D                              IOP5,3
+P53OE                             OEP5,3
+P53PU                             PUP5,3
+P54D                              IOP5,4
+P54OE                             OEP5,4
+P54PU                             PUP5,4
+PC0                               PCL,0
+PC1                               PCL,1
+PC2                               PCL,2
+PC3                               PCL,3
+PC4                               PCL,4
+PC5                               PCL,5
+PC6                               PCL,6
+PC7                               PCL,7
+PC8                               PCH,0
+PC9                               PCH,1
+PD                                PFLAG,6
+PWM0OE                            T0CR,0
+PWM1OE                            T1CR,0
+STKP0                             MCR,0
+STKP1                             MCR,1
+STKP2                             MCR,2
+STKR0B0                           STKR0L,0
+STKR0B1                           STKR0L,1
+STKR0B2                           STKR0L,2
+STKR0B3                           STKR0L,3
+STKR0B4                           STKR0L,4
+STKR0B5                           STKR0L,5
+STKR0B6                           STKR0L,6
+STKR0B7                           STKR0L,7
+STKR0B8                           STKR0H,0
+STKR0B9                           STKR0H,1
+STKR1B0                           STKR1L,0
+STKR1B1                           STKR1L,1
+STKR1B2                           STKR1L,2
+STKR1B3                           STKR1L,3
+STKR1B4                           STKR1L,4
+STKR1B5                           STKR1L,5
+STKR1B6                           STKR1L,6
+STKR1B7                           STKR1L,7
+STKR1B8                           STKR1H,0
+STKR1B9                           STKR1H,1
+STKR2B0                           STKR2L,0
+STKR2B1                           STKR2L,1
+STKR2B2                           STKR2L,2
+STKR2B3                           STKR2L,3
+STKR2B4                           STKR2L,4
+STKR2B5                           STKR2L,5
+STKR2B6                           STKR2L,6
+STKR2B7                           STKR2L,7
+STKR2B8                           STKR2H,0
+STKR2B9                           STKR2H,1
+STKR3B0                           STKR3L,0
+STKR3B1                           STKR3L,1
+STKR3B2                           STKR3L,2
+STKR3B3                           STKR3L,3
+STKR3B4                           STKR3L,4
+STKR3B5                           STKR3L,5
+STKR3B6                           STKR3L,6
+STKR3B7                           STKR3L,7
+STKR3B8                           STKR3H,0
+STKR3B9                           STKR3H,1
+T0CKS                             T0CR,3
+T0CNT0                            T0CNT,0
+T0CNT1                            T0CNT,1
+T0CNT2                            T0CNT,2
+T0CNT3                            T0CNT,3
+T0CNT4                            T0CNT,4
+T0CNT5                            T0CNT,5
+T0CNT6                            T0CNT,6
+T0CNT7                            T0CNT,7
+T0EN                              T0CR,7
+T0ICKS                            TMRCR,2
+T0IE                              INTE,5
+T0IF                              INTF,5
+T0LDEN                            T0CR,2
+T0LDR0                            T0LDR,0
+T0LDR1                            T0LDR,1
+T0LDR2                            T0LDR,2
+T0LDR3                            T0LDR,3
+T0LDR4                            T0LDR,4
+T0LDR5                            T0LDR,5
+T0LDR6                            T0LDR,6
+T0LDR7                            T0LDR,7
+T0PRS0                            T0CR,4
+T0PRS1                            T0CR,5
+T0PRS2                            T0CR,6
+T0WUEN                            TMRCR,1
+T1CKS                             T1CR,3
+T1CNT0                            T1CNT,0
+T1CNT1                            T1CNT,1
+T1CNT2                            T1CNT,2
+T1CNT3                            T1CNT,3
+T1CNT4                            T1CNT,4
+T1CNT5                            T1CNT,5
+T1CNT6                            T1CNT,6
+T1CNT7                            T1CNT,7
+T1EN                              T1CR,7
+T1ICKS                            TMRCR,3
+T1IE                              INTE,6
+T1IF                              INTF,6
+T1LDEN                            T1CR,2
+T1LDR0                            T1LDR,0
+T1LDR1                            T1LDR,1
+T1LDR2                            T1LDR,2
+T1LDR3                            T1LDR,3
+T1LDR4                            T1LDR,4
+T1LDR5                            T1LDR,5
+T1LDR6                            T1LDR,6
+T1LDR7                            T1LDR,7
+T1PRS0                            T1CR,4
+T1PRS1                            T1CR,5
+T1PRS2                            T1CR,6
+TO                                PFLAG,7
+VEREN                             VREFCR,7
+WDTCR0                            WDTCR,0
+WDTCR1                            WDTCR,1
+WDTCR2                            WDTCR,2
+WDTCR3                            WDTCR,3
+WDTCR4                            WDTCR,4
+WDTCR5                            WDTCR,5
+WDTCR6                            WDTCR,6
+WDTCR7                            WDTCR,7
+Z                                 PFLAG,0
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     0 reported,     0 suppressed
+
+

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project MCU="MC35P7050" ID="0x7050" MCU_Type="CRISC" Date="2012-08-28" VS="1.01">
+  <ProWindows>
+    <Explorer fName="MC35P7050">
+      <SouceCode fName="SourceCode">
+        <asmFile fName="MC35P7050.c" fPath="\MC35P7050.c" />
+      </SouceCode>
+      <SouceCode fName="Output" />
+      <SouceCode fName="Debug">
+        <asmFile fName="user.h" fPath="\user.h" />
+      </SouceCode>
+    </Explorer>
+  </ProWindows>
+  <Option Value="7D4" Value0="d" Value1="600" Value2="80" Value3="480" Value4="480" Value5="1080" Value6="24ff" Value7="20ed" Value8="" Value9="" Value10="" />
+  <Compiler Name="gpasm.exe" />
+  <Language Name="C" />
+</Project>

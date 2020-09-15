@@ -1,0 +1,97 @@
+gplink-2.2.18 (Apr 13 2020)
+Listing File Generated: 2020-9-10  21:22:22
+ 
+ 
+Address  Value    Disassembly              Source
+-------  -----    -----------              ------
+                                           ;******************************************************************************
+                                           ;  *   	@MCU   	   	   	   	 : MC35P7040
+                                           ;  *   	@Create Date         : 2020.01.09
+                                           ;  *   	@Author/Corporation  : Martin/SinoMCU
+                                           ;  *   	@技术支持QQ群   	  : 814641858      
+                                           ;  *    @晟矽微官方论坛   	  : http://bbs.sinomcu.com/	 
+                                           ;  *   	@Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+                                           ;  *----------------------Abstract Description---------------------------------      	
+                                           ;  *            烧录时选择LVD3.6V 
+                                           ;			低于3.6V时LVD36标志置1 P01输出高；反之输出低，
+                                           ;			LVD说明：
+                                           ;					LVD检测值在烧录时烧写固定；
+                                           ;					使用注意LVD误差
+                                           ;******************************************************************************
+                                           #include "MC35P7040.INC"   
+                                           		LIST
+                                           ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                                           		NOLIST
+                                               
+                                               ORG 	0x0000
+000000   800b     goto    0xb              	goto	MAIN
+                                           	ORG		0x8
+                                           INT_ISR:
+000008   0400     push                     	push
+                                           	;
+                                               ;
+000009   0500     pop                      	pop
+00000a   0f00     retie                    	RETIE	
+                                           
+                                           MAIN:
+00000b   c012     call    0x12             	CALL	Sys_Init
+                                           MAIN_LOOP:
+00000c   5d86     jbset   0x86, 0x5        	JBSET	PFLAG,5     ;LVD烧录选择3.6V
+00000d   8010     goto    0x10             	GOTO	VOL_NORMAL
+00000e   49d0     bset    0xd0, 0x1        	BSET	P01D
+00000f   800c     goto    0xc              	GOTO	MAIN_LOOP
+                                           VOL_NORMAL:
+000010   41d0     bclr    0xd0, 0x1        	BCLR	P01D
+000011   800c     goto    0xc              	GOTO	MAIN_LOOP
+                                           ; exit point of main
+                                           
+                                           Sys_Init:
+000012   47df     bclr    0xdf, 0x7        	BCLR	GIE
+000013   c026     call    0x26             	CALL	CLR_RAM
+000014   c017     call    0x17             	CALL	IO_Init        
+000015   4fdf     bset    0xdf, 0x7        	BSET	GIE
+000016   0e00     return                   	RETURN	
+                                           ; exit point of _Sys_Init
+                                           
+                                           IO_Init:
+000017   2bd0     clrr    0xd0             	CLRR	IOP0   ;io口数据位
+000018   2dff     movai   0xff             	MOVAI	0xff
+000019   1fb8     movra   0xb8             	MOVRA	OEP0   ;io口方向 1:out  0:in  
+00001a   2be0     clrr    0xe0             	CLRR	PUP0   ;io口上拉电阻   1:enable  0:disable
+00001b   2bd4     clrr    0xd4             	CLRR	IOP4   ;io口数据位
+00001c   2dff     movai   0xff             	MOVAI	0xff
+00001d   1fc4     movra   0xc4             	MOVRA	OEP4   ;io口方向 1:out  0:in  
+00001e   2be4     clrr    0xe4             	CLRR	PUP4   ;io口上拉电阻   1:enable  0:disable
+00001f   2bd5     clrr    0xd5             	CLRR	IOP5   ;io口数据位
+000020   2dff     movai   0xff             	MOVAI	0xff
+000021   1fc5     movra   0xc5             	MOVRA	OEP5   ;io口方向 1:out  0:in  
+000022   2be5     clrr    0xe5             	CLRR	PUP5   ;io口上拉电阻   1:enable  0:disable
+000023   2dff     movai   0xff             	MOVAI	0xff
+000024   1fae     movra   0xae             	MOVRA	P4CON
+000025   0e00     return                   	RETURN	
+                                           ; exit point of _IO_Init
+                                           
+                                           CLR_RAM:	
+000026   2d3f     movai   0x3f             	movai 0x3F
+000027   1f83     movra   0x83             	movra FSR0
+000028   2b84     clrr    0x84             	clrr FSR1
+000029   2be7     clrr    0xe7             	clrr INDF
+00002a   2683     djzr    0x83             	DJZR FSR0
+00002b   8029     goto    0x29             	goto $-2
+00002c   2be7     clrr    0xe7             	clrr INDF
+00002d   0e00     return                   	RETURN	
+                                           ; exit point of _CLR_RAM
+                                           
+                                           
+                                           	end
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : XX-------------- XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXXXXXXXXX XXXXXXXXXXXX---- ---------------- ----------------
+
+All other memory blocks unused.
+
+Program Memory Words Used:    39
+

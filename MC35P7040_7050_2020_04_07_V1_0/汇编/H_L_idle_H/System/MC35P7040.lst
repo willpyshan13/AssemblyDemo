@@ -1,0 +1,457 @@
+gpasm-2.2.18 (Apr 13 2020)   MC35P7040.asm      2020-9-16  00:08:22          PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ;******************************************************************************
+                      00002 ;  *    @MCU                             : MC35P7040
+                      00003 ;  *    @Create Date         : 2020.01.09
+                      00004 ;  *    @Author/Corporation  : Martin/SinoMCU
+                      00005 ;  *    @技术支持QQ群             : 814641858      
+                      00006 ;  *    @晟矽微官方论坛           : http://bbs.sinomcu.com/      
+                      00007 ;  *    @Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+                      00008 ;  *----------------------Abstract Description---------------------------------         
+                      00009 ;  *            高频-低频-空闲模式-低频-高频-IO翻转 2S T0唤醒一次，  
+                      00010 ;                P01翻转200次输出
+                      00011 ;                P54D 2S翻转
+                      00012 ;                模式切换可根据数据手册 模式切换示意图 修改；
+                      00013 ;******************************************************************************
+                      00014 #include "MC35P7040.INC"
+                      00001                 LIST
+                      00002 ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                      00460                 LIST
+                      00015 
+  00000000            00016 num     EQU     0x00
+                      00017 
+                      00018         ORG     0x0000
+0000   8000           00019         goto    MAIN
+                      00020     ORG     0x08
+0008                  00021 INT_ISR:
+0008   0400           00022         push
+0009   5DC8           00023         JBSET   T0IF
+000A   8000           00024         GOTO    TIMER0_END
+000B   5DC9           00025         JBSET   T0IE
+000C   8000           00026         GOTO    TIMER0_END
+000D   45C8           00027         BCLR    T0IF
+000E   2D04           00028     MOVAI   00000100B
+000F   1CD0           00029         XORRA   IOP0                ;  P03D取反 
+0010   2D10           00030     MOVAI       00010000B
+0011   1CD5           00031         XORRA   IOP5                ;  P54D取反  
+0012   2D01           00032     MOVAI   00000001B
+0013   1CD4           00033         XORRA   IOP4                ;  P40D取反         
+0014                  00034 TIMER0_END:
+0014   0500           00035         pop
+0015   0F00           00036         RETIE   
+                      00037 
+0016                  00038 MAIN:
+0016   C000           00039         CALL    Sys_Init
+0017                  00040 MAIN_LOOP:
+0017   47B1           00041         BCLR    ADEN    ;关闭外设  
+0018   4ACA           00042         BSET    CLKS    ;切换到低频 4t
+0019   0000           00043         nop
+001A   49CA           00044         BSET    HFDE                                       
+001B   2D83           00045         MOVAI   256-125
+001C   1FDB           00046         MOVRA   T0CNT
+001D   4FDA           00047         BSET    T0EN
+001E   4DC9           00048         BSET    T0IE
+001F   2BC8           00049         CLRR    INTF
+0020   0000           00050         nop
+0021   0000           00051         nop
+0022   2DE7           00052         MOVAI   0xe7
+0023   29CA           00053         ANDRA   OSCM
+0024   4CCA           00054         BSET    OSCM,4 ;绿色模式
+0025   0000           00055         nop
+0026   0000           00056         nop               
+0027   0000           00057         nop
+0028   45C9           00058         BCLR    T0IE
+0029   47DA           00059         BCLR    T0EN
+002A   41CA           00060         BCLR    HFDE    ;打开高频  (用户自己选择)
+002B   0000           00061         nop
+002C   0000           00062         nop
+002D   42CA           00063         BCLR    CLKS    ;切换到高频(用户自己选择)
+002E   4FB1           00064         BSET    ADEN    ;开启相应的外设  (用户自己选择)
+002F   2B00           00065     CLRR    num
+0030                  00066 IO_OUT_P01:
+0030   1600           00067     JZR    num
+0031   0000           00068     nop
+0032   2D13           00069     MOVAI       19
+0033   2200           00070     ASUBAR      num
+0034   5A86           00071     JBSET       C
+0035   8000           00072     GOTO        MAIN_LOOP 
+0036   2D02           00073     MOVAI       00000010B
+0037   1CD0           00074         XORRA   IOP0                ;  P01D取反
+0038   2D02           00075         MOVAI   00000010B
+0039   1CD4           00076         XORRA   IOP4                ;  P44D取反
+003A   0000           00077         nop
+003B   0000           00078         nop
+003C   0000           00079         nop
+003D   0000           00080         nop
+003E   0000           00081         nop
+003F   0000           00082         nop
+0040   0000           00083         nop
+0041   0000           00084         nop
+0042   8000           00085         GOTO    IO_OUT_P01
+                      00086 
+0043                  00087 Sys_Init:
+0043   47DF           00088         BCLR    GIE
+0044   C000           00089         CALL    CLR_RAM
+0045   C000           00090         CALL    IO_Init
+0046   C000           00091         CALL    TIMER0_INT_Init  
+0047   4FDF           00092         BSET    GIE
+0048   0E00           00093         RETURN  
+                      00094 ; exit point of _Sys_Init
+                      00095 
+0049                  00096 TIMER0_INT_Init:
+0049   2D06           00097         MOVAI   0x06
+004A   1FD8           00098         MOVRA   TMRCR   ;T1CLK=FCPU/2      T0CLK=Fosc    允许T0溢出唤醒
+004B   2D14           00099         MOVAI   0x14
+004C   1FDA           00100         MOVRA   T0CR   ;开启T0    128分频  T0CLK内部时钟  自动重载  关闭PWM
+004D   2D83           00101         MOVAI   0x83
+004E   1FDB           00102         MOVRA   T0CNT  ;T0CNT=256-125;
+004F   2D83           00103         MOVAI   0x83
+0050   1FCD           00104         MOVRA   T0LDR  ;进入低频后   32k/4/128=2s    低频模式固定4t
+0051   0E00           00105         RETURN  
+                      00106 ; exit point of _TIMER0_INT_Init
+                      00107 
+0052                  00108 IO_Init:        
+0052   2BD0           00109         CLRR    IOP0
+0053   2DFF           00110         MOVAI   0xff
+0054   1FB8           00111         MOVRA   OEP0   ;io口方向 1:out  0:in  
+0055   2D00           00112         MOVAI   0x00
+0056   1FE0           00113         MOVRA   PUP0   ;io口上拉电阻   1:enable  0:disable
+0057   2BD4           00114         CLRR    IOP4   ;io口数据位
+0058   2DFF           00115         MOVAI   0xff
+0059   1FC4           00116         MOVRA   OEP4   ;io口方向 1:out  0:in   
+005A   2BE4           00117         CLRR    PUP4   ;io口上拉电阻   1:enable  0:disable
+005B   2BD5           00118         CLRR    IOP5   ;io口数据位
+005C   2DFF           00119         MOVAI   0xff    ;io口方向 1:out  0:in  
+005D   1FC5           00120         MOVRA   OEP5
+005E   2BE5           00121         CLRR    PUP5   ;io口上拉电阻   1:enable  0:disable
+                      00122         ;MOVAI          0xff
+                      00123         ;MOVRA          P4CON
+005F   0E00           00124         RETURN  
+                      00125 ; exit point of _IO_Init
+                      00126 
+0060                  00127 CLR_RAM:        
+0060   2D01           00128         movai 0x01
+0061   1F83           00129         movra FSR0
+0062   2B84           00130         clrr FSR1
+0063   2BE7           00131         clrr INDF
+0064   2683           00132         DJZR FSR0
+0065   8000           00133         goto $-2
+0066   2BE7           00134         clrr INDF
+0067   0E00           00135         RETURN  
+                      00136 ; exit point of _CLR_RAM
+                      00137 
+                      00138 
+                      00139         end
+gpasm-2.2.18 (Apr 13 2020)   MC35P7040.asm      2020-9-16  00:08:22          PAGE  2
+
+
+SYMBOL TABLE
+  LABEL                             VALUE
+
+ADB                               000000B2
+ADM                               000000B1
+ADR                               000000B3
+ADT                               000000B4
+CLR_RAM                           00000060
+EINTCR                            000000BF
+FSR0                              00000083
+FSR1                              00000084
+HIBYTE                            00000082
+INDF                              000000E7
+INTE                              000000C9
+INTF                              000000C8
+INT_ISR                           00000008
+IOP0                              000000D0
+IOP4                              000000D4
+IOP5                              000000D5
+IO_Init                           00000052
+IO_OUT_P01                        00000030
+MAIN                              00000016
+MAIN_LOOP                         00000017
+MCR                               000000DF
+OEP0                              000000B8
+OEP4                              000000C4
+OEP5                              000000C5
+OSCM                              000000CA
+P4CON                             000000AE
+PCH                               000000CF
+PCL                               000000CE
+PFLAG                             00000086
+PUP0                              000000E0
+PUP4                              000000E4
+PUP5                              000000E5
+STKR0H                            000000FF
+STKR0L                            000000FE
+STKR1H                            000000FD
+STKR1L                            000000FC
+STKR2H                            000000FB
+STKR2L                            000000FA
+STKR3H                            000000F9
+STKR3L                            000000F8
+Sys_Init                          00000043
+T0CNT                             000000DB
+T0CR                              000000DA
+T0LDR                             000000CD
+T1CNT                             000000DD
+T1CR                              000000DC
+T1LDR                             000000DE
+TIMER0_END                        00000014
+TIMER0_INT_Init                   00000049
+TMRCR                             000000D8
+VREFCR                            000000AF
+WDTCR                             000000CC
+_.org_8_0065                      00000065
+_CONFIG0                          00008000
+_CONFIG1                          00008001
+__35P7040                         00000001
+num                               00000000
+ADB0                              ADR,0
+ADB1                              ADR,1
+ADB10                             ADB,6
+ADB11                             ADB,7
+ADB2                              ADR,2
+ADB3                              ADR,3
+ADB4                              ADB,0
+ADB5                              ADB,1
+ADB6                              ADB,2
+ADB7                              ADB,3
+ADB8                              ADB,4
+ADB9                              ADB,5
+ADCHS0                            ADM,0
+ADCHS1                            ADM,1
+ADCHS2                            ADM,2
+ADCKS0                            ADR,4
+ADCKS1                            ADR,6
+ADEN                              ADM,7
+ADEOC                             ADM,5
+ADIE                              INTE,7
+ADIF                              INTF,7
+ADSTR                             ADM,6
+ADTR0                             ADT,0
+ADTR1                             ADT,1
+ADTR2                             ADT,2
+ADTR3                             ADT,3
+ADTR4                             ADT,4
+ADTS0                             ADT,6
+ADTS1                             ADT,7
+ADVRS0                            VREFCR,0
+ADVRS1                            VREFCR,1
+BUZ0OE                            T0CR,1
+BUZ1OE                            T1CR,1
+C                                 PFLAG,2
+CLKS                              OSCM,2
+CPUM0                             OSCM,3
+CPUM1                             OSCM,4
+DC                                PFLAG,1
+FSR00                             FSR0,0
+FSR01                             FSR0,1
+FSR02                             FSR0,2
+FSR03                             FSR0,3
+FSR04                             FSR0,4
+FSR05                             FSR0,5
+FSR06                             FSR0,6
+FSR07                             FSR0,7
+FSR10                             FSR1,0
+FSR11                             FSR1,1
+FSR12                             FSR1,2
+FSR13                             FSR1,3
+FSR14                             FSR1,4
+FSR15                             FSR1,5
+FSR16                             FSR1,6
+FSR17                             FSR1,7
+GCHS                              ADM,4
+GIE                               MCR,7
+HFDE                              OSCM,1
+HIBYTE0                           HIBYTE,0
+HIBYTE1                           HIBYTE,1
+HIBYTE2                           HIBYTE,2
+HIBYTE3                           HIBYTE,3
+HIBYTE4                           HIBYTE,4
+HIBYTE5                           HIBYTE,5
+HIBYTE6                           HIBYTE,6
+HIBYTE7                           HIBYTE,7
+INDF0                             INDF,0
+INDF1                             INDF,1
+INDF2                             INDF,2
+INDF3                             INDF,3
+INDF4                             INDF,4
+INDF5                             INDF,5
+INDF6                             INDF,6
+INDF7                             INDF,7
+INT0IE                            INTE,0
+INT0IF                            INTF,0
+INT1IE                            INTE,1
+INT1IF                            INTF,1
+LVD24                             PFLAG,4
+LVD36                             PFLAG,5
+MINT00                            EINTCR,3
+MINT01                            EINTCR,4
+P00D                              IOP0,0
+P00OE                             OEP0,0
+P00PU                             PUP0,0
+P01D                              IOP0,1
+P01OE                             OEP0,1
+P01PU                             PUP0,1
+P02D                              IOP0,2
+P02OE                             OEP0,2
+P02PU                             PUP0,2
+P03D                              IOP0,3
+P03OE                             OEP0,3
+P03PU                             PUP0,3
+P04D                              IOP0,4
+P04OE                             OEP0,4
+P04PU                             PUP0,4
+P40CON                            P4CON,0
+P40D                              IOP4,0
+P40OE                             OEP4,0
+P40PU                             PUP4,0
+P41CON                            P4CON,1
+P41D                              IOP4,1
+P41OE                             OEP4,1
+P41PU                             PUP4,1
+P42CON                            P4CON,2
+P42D                              IOP4,2
+P42OE                             OEP4,2
+P42PU                             PUP4,2
+P43CON                            P4CON,3
+P43D                              IOP4,3
+P43OE                             OEP4,3
+P43PU                             PUP4,3
+P44CON                            P4CON,4
+P44D                              IOP4,4
+P44OE                             OEP4,4
+P44PU                             PUP4,4
+P53D                              IOP5,3
+P53OE                             OEP5,3
+P53PU                             PUP5,3
+P54D                              IOP5,4
+P54OE                             OEP5,4
+P54PU                             PUP5,4
+PC0                               PCL,0
+PC1                               PCL,1
+PC2                               PCL,2
+PC3                               PCL,3
+PC4                               PCL,4
+PC5                               PCL,5
+PC6                               PCL,6
+PC7                               PCL,7
+PC8                               PCH,0
+PC9                               PCH,1
+PD                                PFLAG,6
+PWM0OE                            T0CR,0
+PWM1OE                            T1CR,0
+STKP0                             MCR,0
+STKP1                             MCR,1
+STKP2                             MCR,2
+STKR0B0                           STKR0L,0
+STKR0B1                           STKR0L,1
+STKR0B2                           STKR0L,2
+STKR0B3                           STKR0L,3
+STKR0B4                           STKR0L,4
+STKR0B5                           STKR0L,5
+STKR0B6                           STKR0L,6
+STKR0B7                           STKR0L,7
+STKR0B8                           STKR0H,0
+STKR0B9                           STKR0H,1
+STKR1B0                           STKR1L,0
+STKR1B1                           STKR1L,1
+STKR1B2                           STKR1L,2
+STKR1B3                           STKR1L,3
+STKR1B4                           STKR1L,4
+STKR1B5                           STKR1L,5
+STKR1B6                           STKR1L,6
+STKR1B7                           STKR1L,7
+STKR1B8                           STKR1H,0
+STKR1B9                           STKR1H,1
+STKR2B0                           STKR2L,0
+STKR2B1                           STKR2L,1
+STKR2B2                           STKR2L,2
+STKR2B3                           STKR2L,3
+STKR2B4                           STKR2L,4
+STKR2B5                           STKR2L,5
+STKR2B6                           STKR2L,6
+STKR2B7                           STKR2L,7
+STKR2B8                           STKR2H,0
+STKR2B9                           STKR2H,1
+STKR3B0                           STKR3L,0
+STKR3B1                           STKR3L,1
+STKR3B2                           STKR3L,2
+STKR3B3                           STKR3L,3
+STKR3B4                           STKR3L,4
+STKR3B5                           STKR3L,5
+STKR3B6                           STKR3L,6
+STKR3B7                           STKR3L,7
+STKR3B8                           STKR3H,0
+STKR3B9                           STKR3H,1
+T0CKS                             T0CR,3
+T0CNT0                            T0CNT,0
+T0CNT1                            T0CNT,1
+T0CNT2                            T0CNT,2
+T0CNT3                            T0CNT,3
+T0CNT4                            T0CNT,4
+T0CNT5                            T0CNT,5
+T0CNT6                            T0CNT,6
+T0CNT7                            T0CNT,7
+T0EN                              T0CR,7
+T0ICKS                            TMRCR,2
+T0IE                              INTE,5
+T0IF                              INTF,5
+T0LDEN                            T0CR,2
+T0LDR0                            T0LDR,0
+T0LDR1                            T0LDR,1
+T0LDR2                            T0LDR,2
+T0LDR3                            T0LDR,3
+T0LDR4                            T0LDR,4
+T0LDR5                            T0LDR,5
+T0LDR6                            T0LDR,6
+T0LDR7                            T0LDR,7
+T0PRS0                            T0CR,4
+T0PRS1                            T0CR,5
+T0PRS2                            T0CR,6
+T0WUEN                            TMRCR,1
+T1CKS                             T1CR,3
+T1CNT0                            T1CNT,0
+T1CNT1                            T1CNT,1
+T1CNT2                            T1CNT,2
+T1CNT3                            T1CNT,3
+T1CNT4                            T1CNT,4
+T1CNT5                            T1CNT,5
+T1CNT6                            T1CNT,6
+T1CNT7                            T1CNT,7
+T1EN                              T1CR,7
+T1ICKS                            TMRCR,3
+T1IE                              INTE,6
+T1IF                              INTF,6
+T1LDEN                            T1CR,2
+T1LDR0                            T1LDR,0
+T1LDR1                            T1LDR,1
+T1LDR2                            T1LDR,2
+T1LDR3                            T1LDR,3
+T1LDR4                            T1LDR,4
+T1LDR5                            T1LDR,5
+T1LDR6                            T1LDR,6
+T1LDR7                            T1LDR,7
+T1PRS0                            T1CR,4
+T1PRS1                            T1CR,5
+T1PRS2                            T1CR,6
+TO                                PFLAG,7
+VEREN                             VREFCR,7
+WDTCR0                            WDTCR,0
+WDTCR1                            WDTCR,1
+WDTCR2                            WDTCR,2
+WDTCR3                            WDTCR,3
+WDTCR4                            WDTCR,4
+WDTCR5                            WDTCR,5
+WDTCR6                            WDTCR,6
+WDTCR7                            WDTCR,7
+Z                                 PFLAG,0
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     0 reported,     0 suppressed
+
+

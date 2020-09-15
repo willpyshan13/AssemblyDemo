@@ -1,0 +1,783 @@
+gpasm-2.2.18 (Apr 13 2020)   MC35P7040.asm      2020-9-13  15:44:54          PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ;******************************************************************************
+                      00002 ;  *    @MCU                             : MC35P7040
+                      00003 ;  *    @Create Date         : 2020.01.09
+                      00004 ;  *    @Author/Corporation  : Martin/SinoMCU
+                      00005 ;  *    @技术支持QQ群             : 814641858      
+                      00006 ;  *    @晟矽微官方论坛           : http://bbs.sinomcu.com/      
+                      00007 ;  *    @Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+                      00008 ;  *----------------------Abstract Description---------------------------------         
+                      00009 ;                       P54 1ms翻转,P53输出PWM,P00唤醒,P40.P41.VDDAD采集  
+                      00010 ;                两个校准实际应用是二选一
+                      00011 ;                偏0   选零点校准
+                      00012 ;                偏vdd 选顶点校准 
+                      00013 ;******************************************************************************
+                      00014 
+                      00015 #include "MC35P7040.INC"
+                      00001                 LIST
+                      00002 ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                      00460                 LIST
+                      00016 
+                      00017 cblock 0x0000
+                      00018 r0x0001
+                      00019 timer0_count1:2
+                      00020 flag1
+                      00021 endc
+                      00022 
+                      00023 #define FLAG_TIMER0_5000ms      flag1,0
+                      00024 
+                      00025 
+                      00026         org     0x0000
+0000   8000           00027         goto    MAIN            
+                      00028 
+                      00029         org     0x8
+0008   8000           00030         goto    INT_ISR         ;中断
+                      00031    
+                      00032 
+0009                  00033 INT_ISR:
+0009   0400           00034         push
+                      00035         
+000A   5DC8           00036         JBSET   T0IF
+000B   8000           00037         GOTO    INTER_END
+000C   5DC9           00038         JBSET   T0IE
+000D   8000           00039         GOTO    INTER_END
+000E   45C8           00040         BCLR    T0IF
+000F   2D08           00041                 MOVAI   00001000B
+0010   1CD5           00042                 XORRA   IOP5                ;  P54D取反
+                      00043 
+0011   1601           00044         JZR     timer0_count1
+0012   8000           00045                 GOTO    $+3
+0013   1602           00046         JZR     (timer0_count1 + 1)
+0014   0000           00047                 NOP
+                      00048         ;timer0_count1 >= 5000
+0015   2D13           00049         MOVAI   0x13
+0016   2202           00050         ASUBAR  (timer0_count1 + 1)
+0017   5A86           00051         JBSET   C
+0018   8000           00052                 GOTO    INTER_END
+0019   5886           00053                 JBSET   Z
+001A   8000           00054                 GOTO    INTER_END
+001B   2D88           00055         MOVAI   0x88
+001C   2201           00056         ASUBAR  timer0_count1
+001D   5A86           00057         JBSET   C
+001E   8000           00058         GOTO    INTER_END
+                      00059 
+001F   2B01           00060         CLRR    timer0_count1
+0020   2B02           00061         CLRR    (timer0_count1 + 1)
+0021   4803           00062         BSET    FLAG_TIMER0_5000ms
+0022                  00063 INTER_END:
+0022   0500           00064         pop
+                      00065         
+0023   0F00           00066         RETIE   
+                      00067 
+0024                  00068 MAIN:
+0024   C000           00069         CALL    Sys_Init
+                      00070 
+0025                  00071 MAIN_LOOP:
+                      00072 ;*****************AD采集**********************
+0025   1EB1           00073                 MOVAR   ADM
+0026   2AF8           00074                 ANDAI   0xf8                    
+0027   1A00           00075                 ORAI    0x00    ;通道0                  P40
+0028   1FB1           00076                 MOVRA   ADM
+0029   C000           00077                 CALL    ADC_Get_Value   
+002A   C000           00078                 CALL    ADC_Get_Value   ;切换通道舍去前面两次采集
+002B   C000           00079                 CALL    ADC_Get_Value   ;demo演示，实际使用客户自行滤波         
+002C   1EB1           00080                 MOVAR   ADM
+002D   2AF8           00081                 ANDAI   0xf8                    
+002E   1A01           00082                 ORAI    0x01    ;通道1                  P41
+002F   1FB1           00083                 MOVRA   ADM
+0030   C000           00084                 CALL    ADC_Get_Value   
+0031   C000           00085                 CALL    ADC_Get_Value   ;切换通道舍去前面两次采集
+0032   C000           00086                 CALL    ADC_Get_Value   ;demo演示，实际使用客户自行滤波 
+0033   1EB1           00087                 MOVAR   ADM
+0034   2AF8           00088                 ANDAI   0xf8                    
+0035   1A05           00089                 ORAI    0x05    ;通道VDD        
+0036   1FB1           00090                 MOVRA   ADM
+0037   C000           00091                 CALL    ADC_Get_Value   
+0038   C000           00092                 CALL    ADC_Get_Value   ;切换通道舍去前面两次采集
+0039   C000           00093                 CALL    ADC_Get_Value   ;demo演示，实际使用客户自行滤波 
+                      00094 ;*****************休眠************************
+                      00095                 ;5000ms进入休眠
+003A   5803           00096         JBSET   FLAG_TIMER0_5000ms
+003B   8000           00097         GOTO    MAIN_LOOP
+003C   4003           00098         BCLR    FLAG_TIMER0_5000ms
+                      00099           ;     休眠关闭外设
+003D   47DF           00100         BCLR    GIE
+003E   47B1           00101         BCLR    ADEN
+003F   40DC           00102         BCLR    PWM1OE
+0040   47DC           00103         BCLR    T1EN
+0041   2BD5           00104         CLRR    IOP5
+0042   0000           00105         nop
+0043   2DE7           00106         MOVAI   0xe7
+0044   29CA           00107         ANDRA   OSCM
+0045   4BCA           00108         BSET    OSCM,3
+0046   0000           00109         nop   
+0047   0000           00110         nop
+0048   0000           00111         nop     
+0049   4FDF           00112         BSET    GIE
+004A   48DC           00113         BSET    PWM1OE
+004B   4FDC           00114         BSET    T1EN
+                      00115                  ; 唤醒后开启外设
+004C   4FB1           00116         BSET    ADEN
+004D   8000           00117         GOTO    MAIN_LOOP
+                      00118 
+                      00119 
+004E                  00120 ADC_Get_Value:
+004E   45B1           00121         BCLR    ADEOC
+004F   4EB1           00122         BSET    ADSTR
+0050   5DB1           00123         JBSET   ADEOC
+0051   8000           00124         GOTO    $-1
+0052   0E00           00125         RETURN  
+                      00126     ; exit point of _ADC_Get_Value
+                      00127     
+0053                  00128 Sys_Init:
+0053   47DF           00129         BCLR    GIE
+0054   C000           00130         CALL    CLR_RAM
+0055   C000           00131         CALL    IO_Init
+0056                  00132 ADC_ADJ_INIT:
+                      00133                 ;        两个校准实际应用是二选一
+                      00134                 ;        偏0   选零点校准
+                      00135                 ;        偏vdd 选顶点校准 
+0056   C000           00136         CALL    ADC_Zero_ADJ
+0057   1F00           00137         MOVRA   r0x0001
+0058   1E00           00138         MOVAR   r0x0001
+0059   5886           00139         JBSET   Z
+005A   8000           00140         GOTO    ADC_ADJ_INIT            ;demo演示 ，此处校准失败一直校准，处于循环
+                      00141                 
+                      00142    ;            CALL    ADC_Vertex_ADJ
+                      00143    ;            MOVRA   r0x0001
+                      00144    ;            MOVAR   r0x0001
+                      00145    ;            JBSET   Z
+                      00146    ;            GOTO    ADC_ADJ_INIT            ;demo演示 ，此处校准失败一直校准，处于循环
+                      00147 
+005B   C000           00148         CALL    TIMER0_INT_Init  
+005C   C000           00149         CALL    TIMER1_PWM_Init   
+005D   C000           00150         CALL    ADC_Init
+005E   4FDF           00151         BSET    GIE
+005F   0E00           00152         RETURN  
+                      00153     ; exit point of _Sys_Init
+0060                  00154 ADC_Vertex_ADJ:
+                      00155     ;   顶点校准   ADTR[4:0]=0x10
+0060   2DD0           00156         MOVAI   0xd0
+0061   1FB4           00157         MOVRA   ADT
+0062   2BAF           00158         CLRR    VREFCR  ;  内部2V
+0063   2BB3           00159         CLRR    ADR     ; 64分频
+0064   4CB1           00160         BSET    GCHS
+0065   4FB1           00161         BSET    ADEN
+0066   45B1           00162         BCLR    ADEOC
+0067   4EB1           00163         BSET    ADSTR
+                      00164 
+0068   5DB1           00165         JBSET   ADEOC
+0069   8000           00166         GOTO    $-1
+                      00167     ;  结果是否为0x0fff
+006A   1EB2           00168         MOVAR   ADB
+006B   1DFF           00169         XORAI   0xff
+006C   5886           00170         JBSET   Z
+006D   8000           00171         GOTO    ADC_ADJ_VER_ADD
+006E   2D0F           00172         MOVAI   0x0f
+006F   28B3           00173         ANDAR   ADR
+0070   1D0F           00174         XORAI   0x0f
+0071   5886           00175         JBSET   Z
+0072   8000           00176         GOTO    ADC_ADJ_VER_ADD
+                      00177 
+0073   2DE0           00178         MOVAI   0xe0
+0074   29B4           00179         ANDRA   ADT
+                      00180 
+0075   2D0F           00181         MOVAI   0x0f
+0076   19B4           00182         ORRA    ADT
+0077   45B1           00183         BCLR    ADEOC
+0078   4EB1           00184         BSET    ADSTR
+                      00185 
+0079   5DB1           00186         JBSET   ADEOC
+007A   8000           00187         GOTO    $-1
+                      00188     ;   结果是否为0x0fff
+007B   1EB2           00189         MOVAR   ADB
+007C   1DFF           00190         XORAI   0xff
+007D   5886           00191         JBSET   Z
+007E   8000           00192         GOTO    ADC_ADJ_VER_DEC
+007F   2D0F           00193         MOVAI   0x0f
+0080   28B3           00194         ANDAR   ADR
+0081   1D0F           00195         XORAI   0x0f
+0082   5886           00196         JBSET   Z
+0083   8000           00197         GOTO    ADC_ADJ_VER_DEC
+                      00198 
+0084   2D3F           00199         MOVAI   0x3f
+0085   29B4           00200         ANDRA   ADT                     ;正常模式
+0086   47B1           00201                 BCLR    ADEN
+0087   2D00           00202         MOVAI   0x00            ;PASS
+0088   8000           00203         GOTO    ADC_VER_ADJ_END 
+0089                  00204 ADC_ADJ_VER_DEC:
+0089   1EB4           00205         MOVAR   ADT
+008A   2A0F           00206         ANDAI   0x0f
+008B   5086           00207         JBCLR   Z
+008C   8000           00208         GOTO    ADC_ADJ_VER_FAIL1
+008D   26B4           00209         DJZR    ADT
+008E   0000           00210         NOP     
+008F   45B1           00211         BCLR    ADEOC
+0090   4EB1           00212         BSET    ADSTR
+                      00213 
+0091   5DB1           00214         JBSET   ADEOC
+0092   8000           00215         GOTO    $-1
+                      00216     ;  结果是否为0x0fff
+0093   1EB2           00217         MOVAR   ADB
+0094   1DFF           00218         XORAI   0xff
+0095   5886           00219         JBSET   Z
+0096   8000           00220         GOTO    ADC_ADJ_VER_DEC
+0097   2D0F           00221         MOVAI   0x0f
+0098   28B3           00222         ANDAR   ADR
+0099   1D0F           00223         XORAI   0x0f
+009A   5886           00224         JBSET   Z
+009B   8000           00225         GOTO    ADC_ADJ_VER_DEC
+                      00226     ;   正常模式
+009C   2D3F           00227         MOVAI   0x3f
+009D   29B4           00228         ANDRA   ADT
+009E   47B1           00229                 BCLR    ADEN
+009F   2D00           00230         MOVAI   0x00    ;PASS
+00A0   8000           00231         GOTO    ADC_VER_ADJ_END
+00A1                  00232 ADC_ADJ_VER_FAIL1:
+00A1   2D3F           00233                 MOVAI   0x3f
+00A2   29B4           00234         ANDRA   ADT                     ;正常模式
+00A3   47B1           00235                 BCLR    ADEN
+00A4   2D01           00236         MOVAI   0x01                    ;FAIL
+00A5   8000           00237         GOTO    ADC_VER_ADJ_END
+00A6                  00238 ADC_ADJ_VER_ADD:        
+00A6   2D0F           00239         MOVAI   0x0f
+00A7   28B4           00240         ANDAR   ADT
+00A8   1D0F           00241         XORAI   0x0f            ;是否加到0x0f 
+00A9   5886           00242         JBSET   Z
+00AA   8000           00243         GOTO    $+2
+00AB   8000           00244         GOTO    ADC_ADJ_VER_FAIL1
+                      00245 
+00AC   2D01           00246         MOVAI   0x01
+00AD   13B4           00247         ADDRA   ADT
+00AE   45B1           00248         BCLR    ADEOC
+00AF   4EB1           00249         BSET    ADSTR
+                      00250 
+00B0   5DB1           00251         JBSET   ADEOC
+00B1   8000           00252         GOTO    $-1
+                      00253     ; 结果是否为0x0fff
+00B2   1EB2           00254         MOVAR   ADB
+00B3   1DFF           00255         XORAI   0xff
+00B4   5886           00256         JBSET   Z
+00B5   8000           00257         GOTO    ADC_ADJ_VER_ADD
+00B6   2D0F           00258         MOVAI   0x0f
+00B7   28B3           00259         ANDAR   ADR
+00B8   1D0F           00260         XORAI   0x0f
+00B9   5886           00261         JBSET   Z
+00BA   8000           00262         GOTO    ADC_ADJ_VER_ADD
+                      00263  
+00BB   2D3F           00264         MOVAI   0x3f    
+00BC   47B1           00265                 BCLR    ADEN
+00BD   29B4           00266         ANDRA   ADT        ;正常模式
+00BE   2D00           00267         MOVAI   0x00   ;PASS
+00BF                  00268 ADC_VER_ADJ_END:
+00BF   0E00           00269         RETURN  
+                      00270     ; exit point of _ADC_Vertex_ADJ
+                      00271     
+00C0                  00272 ADC_Zero_ADJ:
+00C0   2D80           00273         MOVAI   0x80
+00C1   1FB4           00274         MOVRA   ADT             ;零点校准   ADTR[4:0]=0
+00C2   2BAF           00275         CLRR    VREFCR      ;内部2V
+00C3   2BB3           00276         CLRR    ADR        ;64分频
+00C4   4CB1           00277         BSET    GCHS
+00C5   4FB1           00278         BSET    ADEN
+00C6   45B1           00279         BCLR    ADEOC
+00C7   4EB1           00280         BSET    ADSTR
+                      00281 
+00C8   5DB1           00282         JBSET   ADEOC
+00C9   8000           00283         GOTO    $-1
+                      00284     ;   结果是否为0
+00CA   1EB2           00285         MOVAR   ADB
+00CB   5886           00286         JBSET   Z
+00CC   8000           00287         GOTO    ADC_ADJ_ZERO_ADD
+00CD   1EB3           00288         MOVAR   ADR
+00CE   2A0F           00289         ANDAI   0x0f
+00CF   5886           00290         JBSET   Z
+00D0   8000           00291         GOTO    ADC_ADJ_ZERO_ADD
+00D1   2D1F           00292         MOVAI   0x1f
+00D2   19B4           00293         ORRA    ADT
+00D3   45B1           00294         BCLR    ADEOC
+00D4   4EB1           00295         BSET    ADSTR
+                      00296 
+00D5   5DB1           00297         JBSET   ADEOC
+00D6   8000           00298         GOTO    $-1
+                      00299     ;   结果是否为0
+00D7   1EB2           00300         MOVAR   ADB
+00D8   5886           00301         JBSET   Z
+00D9   8000           00302         GOTO    ADC_ADJ_ZERO_DEC
+00DA   1EB3           00303         MOVAR   ADR
+00DB   2A0F           00304         ANDAI   0x0f
+00DC   5886           00305         JBSET   Z
+00DD   8000           00306         GOTO    ADC_ADJ_ZERO_DEC
+                      00307     ;  正常模式
+00DE   2D3F           00308         MOVAI   0x3f
+00DF   29B4           00309         ANDRA   ADT  
+00E0   47B1           00310                 BCLR    ADEN
+00E1   2D00           00311         MOVAI   0x00            ;PASS
+00E2   8000           00312         GOTO    ADC_ZERO_ADJ_END
+00E3                  00313 ADC_ADJ_ZERO_DEC:
+00E3   1EB4           00314         MOVAR   ADT
+00E4   2A0F           00315         ANDAI   0x0f
+00E5   5086           00316         JBCLR   Z
+00E6   8000           00317         GOTO    ADC_ADJ_ZERO_FAIL1
+00E7   26B4           00318         DJZR    ADT
+00E8   0000           00319         NOP     
+00E9   45B1           00320         BCLR    ADEOC
+00EA   4EB1           00321         BSET    ADSTR
+                      00322 
+00EB   5DB1           00323         JBSET   ADEOC
+00EC   8000           00324         GOTO    $-1
+                      00325     ;  结果是否为0
+00ED   1EB2           00326         MOVAR   ADB
+00EE   5886           00327         JBSET   Z
+00EF   8000           00328         GOTO    ADC_ADJ_ZERO_DEC
+00F0   1EB3           00329         MOVAR   ADR
+00F1   2A0F           00330         ANDAI   0x0f
+00F2   5886           00331         JBSET   Z
+00F3   8000           00332         GOTO    ADC_ADJ_ZERO_DEC
+                      00333     ;   正常模式
+00F4   2D3F           00334         MOVAI   0x3f
+00F5   29B4           00335         ANDRA   ADT
+00F6   47B1           00336                 BCLR    ADEN
+00F7   2D00           00337         MOVAI   0x00    ;PASS
+00F8   8000           00338         GOTO    ADC_ZERO_ADJ_END
+00F9                  00339 ADC_ADJ_ZERO_FAIL1:
+00F9   2D3F           00340                 MOVAI   0x3f
+00FA   29B4           00341         ANDRA   ADT                     ;正常模式
+00FB   47B1           00342                 BCLR    ADEN
+00FC   2D01           00343         MOVAI   0x01    ;FAIL
+00FD   8000           00344         GOTO    ADC_ZERO_ADJ_END
+00FE                  00345 ADC_ADJ_ZERO_ADD:
+00FE   2D0F           00346                 MOVAI   0x0f
+00FF   28B4           00347         ANDAR   ADT
+0100   1D0F           00348         XORAI   0x0f
+0101   5886           00349         JBSET   Z
+0102   8000           00350         GOTO    $+2
+0103   8000           00351         GOTO    ADC_ADJ_ZERO_FAIL1
+                      00352 
+0104   2D01           00353         MOVAI   0x01
+0105   13B4           00354         ADDRA   ADT
+0106   45B1           00355         BCLR    ADEOC
+0107   4EB1           00356         BSET    ADSTR
+                      00357 
+0108   5DB1           00358         JBSET   ADEOC
+0109   8000           00359         GOTO    $-1
+                      00360     ;   结果是否为0
+010A   1EB2           00361         MOVAR   ADB
+010B   5886           00362         JBSET   Z
+010C   8000           00363         GOTO    ADC_ADJ_ZERO_ADD
+010D   1EB3           00364         MOVAR   ADR
+010E   2A0F           00365         ANDAI   0x0f
+010F   5886           00366         JBSET   Z
+0110   8000           00367         GOTO    ADC_ADJ_ZERO_ADD
+                      00368     ;   正常模式
+0111   2D3F           00369         MOVAI   0x3f
+0112   29B4           00370         ANDRA   ADT
+0113   47B1           00371                 BCLR    ADEN
+0114   2D00           00372         MOVAI   0x00    ;PASS
+0115                  00373 ADC_ZERO_ADJ_END:
+0115   0E00           00374         RETURN  
+                      00375     ; exit point of _ADC_Zero_ADJ
+                      00376     
+0116                  00377 ADC_Init:
+0116   2BB1           00378         CLRR    ADM
+0117   2D90           00379         MOVAI   0x90
+0118   19B1           00380         ORRA    ADM
+0119   2BAF           00381         CLRR    VREFCR      ;   内部2V
+011A   2BB3           00382         CLRR    ADR         ;   adc时钟  Fcpu/64
+011B   0E00           00383         RETURN  
+                      00384     ; exit point of _ADC_Init
+011C                  00385 TIMER1_PWM_Init:
+011C   2DF1           00386         MOVAI   0xf1
+011D   1FDC           00387         MOVRA   T1CR
+                      00388     ;  开启T1    1分频  T1CLK内部时钟  开启PWM  256个周期
+011E   2D80           00389         MOVAI   0x80
+011F   1FDE           00390         MOVRA   T1LDR
+0120   0E00           00391         RETURN  
+                      00392     ; exit point of _TIMER1_PWM_Init 
+0121                  00393 TIMER0_INT_Init:
+                      00394     ; T1CLK=FCPU/2      T0CLK=FCPU/2    关闭T0溢出唤醒
+0121   2BD8           00395         CLRR    TMRCR
+                      00396     ; 开启T0    32分频  T0CLK内部时钟  自动重载  关闭PWM
+0122   2DA4           00397         MOVAI   0xa4
+0123   1FDA           00398         MOVRA   T0CR
+0124   2D83           00399         MOVAI   0x83
+0125   1FDB           00400         MOVRA   T0CNT
+0126   2D83           00401         MOVAI   0x83
+0127   1FCD           00402         MOVRA   T0LDR           ;  1ms
+0128   4DC9           00403         BSET    T0IE
+0129   0E00           00404         RETURN  
+                      00405     ; exit point of _TIMER0_INT_Init
+                      00406     
+012A                  00407 IO_Init:
+012A   2BD0           00408         CLRR    IOP0    
+012B   2DFE           00409         MOVAI   0xfe
+012C   1FB8           00410         MOVRA   OEP0            ;  io口方向 1:out  0:in
+012D   2D01           00411         MOVAI   0x01
+012E   1FE0           00412         MOVRA   PUP0            ; io口上拉电阻   1:enable  0:disable
+012F   2BD4           00413         CLRR    IOP4
+0130   2DFC           00414         MOVAI   0xfc
+0131   1FC4           00415         MOVRA   OEP4            ;  io口方向 1:out  0:in
+0132   2BE4           00416         CLRR    PUP4            ; io口上拉电阻   1:enable  0:disable
+0133   2BD5           00417         CLRR    IOP5   
+0134   2DFF           00418         MOVAI   0xff
+0135   1FC5           00419         MOVRA   OEP5            ; io口方向 1:out  0:in
+0136   2BE5           00420         CLRR    PUP5            ; io口上拉电阻   1:enable  0:disable
+0137   2D03           00421         MOVAI   0x03
+0138   1FAE           00422         MOVRA   P4CON           ; P40 P41模拟
+0139   0E00           00423         RETURN  
+                      00424     ; exit point of _IO_Init
+013A                  00425 CLR_RAM:
+013A   2D3F           00426         movai   0x3F
+013B   1F83           00427         movra   FSR0
+013C   2B84           00428         clrr    FSR1
+013D   2BE7           00429         clrr    INDF
+013E   2683           00430         DJZR    FSR0
+013F   8000           00431         goto    $ -2
+0140   2BE7           00432         clrr    INDF
+0141   0E00           00433         RETURN  
+                      00434     ; exit point of _CLR_RAM
+                      00435     
+                      00436     
+                      00437         end
+gpasm-2.2.18 (Apr 13 2020)   MC35P7040.asm      2020-9-13  15:44:54          PAGE  2
+
+
+SYMBOL TABLE
+  LABEL                             VALUE
+
+ADB                               000000B2
+ADC_ADJ_INIT                      00000056
+ADC_ADJ_VER_ADD                   000000A6
+ADC_ADJ_VER_DEC                   00000089
+ADC_ADJ_VER_FAIL1                 000000A1
+ADC_ADJ_ZERO_ADD                  000000FE
+ADC_ADJ_ZERO_DEC                  000000E3
+ADC_ADJ_ZERO_FAIL1                000000F9
+ADC_Get_Value                     0000004E
+ADC_Init                          00000116
+ADC_VER_ADJ_END                   000000BF
+ADC_Vertex_ADJ                    00000060
+ADC_ZERO_ADJ_END                  00000115
+ADC_Zero_ADJ                      000000C0
+ADM                               000000B1
+ADR                               000000B3
+ADT                               000000B4
+CLR_RAM                           0000013A
+EINTCR                            000000BF
+FSR0                              00000083
+FSR1                              00000084
+HIBYTE                            00000082
+INDF                              000000E7
+INTE                              000000C9
+INTER_END                         00000022
+INTF                              000000C8
+INT_ISR                           00000009
+IOP0                              000000D0
+IOP4                              000000D4
+IOP5                              000000D5
+IO_Init                           0000012A
+MAIN                              00000024
+MAIN_LOOP                         00000025
+MCR                               000000DF
+OEP0                              000000B8
+OEP4                              000000C4
+OEP5                              000000C5
+OSCM                              000000CA
+P4CON                             000000AE
+PCH                               000000CF
+PCL                               000000CE
+PFLAG                             00000086
+PUP0                              000000E0
+PUP4                              000000E4
+PUP5                              000000E5
+STKR0H                            000000FF
+STKR0L                            000000FE
+STKR1H                            000000FD
+STKR1L                            000000FC
+STKR2H                            000000FB
+STKR2L                            000000FA
+STKR3H                            000000F9
+STKR3L                            000000F8
+Sys_Init                          00000053
+T0CNT                             000000DB
+T0CR                              000000DA
+T0LDR                             000000CD
+T1CNT                             000000DD
+T1CR                              000000DC
+T1LDR                             000000DE
+TIMER0_INT_Init                   00000121
+TIMER1_PWM_Init                   0000011C
+TMRCR                             000000D8
+VREFCR                            000000AF
+WDTCR                             000000CC
+_.org_8_0012                      00000012
+_.org_8_0051                      00000051
+_.org_8_0069                      00000069
+_.org_8_007A                      0000007A
+_.org_8_0092                      00000092
+_.org_8_00AA                      000000AA
+_.org_8_00B1                      000000B1
+_.org_8_00C9                      000000C9
+_.org_8_00D6                      000000D6
+_.org_8_00EC                      000000EC
+_.org_8_0102                      00000102
+_.org_8_0109                      00000109
+_.org_8_013F                      0000013F
+_CONFIG0                          00008000
+_CONFIG1                          00008001
+__35P7040                         00000001
+flag1                             00000003
+r0x0001                           00000000
+timer0_count1                     00000001
+ADB0                              ADR,0
+ADB1                              ADR,1
+ADB10                             ADB,6
+ADB11                             ADB,7
+ADB2                              ADR,2
+ADB3                              ADR,3
+ADB4                              ADB,0
+ADB5                              ADB,1
+ADB6                              ADB,2
+ADB7                              ADB,3
+ADB8                              ADB,4
+ADB9                              ADB,5
+ADCHS0                            ADM,0
+ADCHS1                            ADM,1
+ADCHS2                            ADM,2
+ADCKS0                            ADR,4
+ADCKS1                            ADR,6
+ADEN                              ADM,7
+ADEOC                             ADM,5
+ADIE                              INTE,7
+ADIF                              INTF,7
+ADSTR                             ADM,6
+ADTR0                             ADT,0
+ADTR1                             ADT,1
+ADTR2                             ADT,2
+ADTR3                             ADT,3
+ADTR4                             ADT,4
+ADTS0                             ADT,6
+ADTS1                             ADT,7
+ADVRS0                            VREFCR,0
+ADVRS1                            VREFCR,1
+BUZ0OE                            T0CR,1
+BUZ1OE                            T1CR,1
+C                                 PFLAG,2
+CLKS                              OSCM,2
+CPUM0                             OSCM,3
+CPUM1                             OSCM,4
+DC                                PFLAG,1
+FLAG_TIMER0_5000ms                flag1,0
+FSR00                             FSR0,0
+FSR01                             FSR0,1
+FSR02                             FSR0,2
+FSR03                             FSR0,3
+FSR04                             FSR0,4
+FSR05                             FSR0,5
+FSR06                             FSR0,6
+FSR07                             FSR0,7
+FSR10                             FSR1,0
+FSR11                             FSR1,1
+FSR12                             FSR1,2
+FSR13                             FSR1,3
+FSR14                             FSR1,4
+FSR15                             FSR1,5
+FSR16                             FSR1,6
+FSR17                             FSR1,7
+GCHS                              ADM,4
+GIE                               MCR,7
+HFDE                              OSCM,1
+HIBYTE0                           HIBYTE,0
+HIBYTE1                           HIBYTE,1
+HIBYTE2                           HIBYTE,2
+HIBYTE3                           HIBYTE,3
+HIBYTE4                           HIBYTE,4
+HIBYTE5                           HIBYTE,5
+HIBYTE6                           HIBYTE,6
+HIBYTE7                           HIBYTE,7
+INDF0                             INDF,0
+INDF1                             INDF,1
+INDF2                             INDF,2
+INDF3                             INDF,3
+INDF4                             INDF,4
+INDF5                             INDF,5
+INDF6                             INDF,6
+INDF7                             INDF,7
+INT0IE                            INTE,0
+INT0IF                            INTF,0
+INT1IE                            INTE,1
+INT1IF                            INTF,1
+LVD24                             PFLAG,4
+LVD36                             PFLAG,5
+MINT00                            EINTCR,3
+MINT01                            EINTCR,4
+P00D                              IOP0,0
+P00OE                             OEP0,0
+P00PU                             PUP0,0
+P01D                              IOP0,1
+P01OE                             OEP0,1
+P01PU                             PUP0,1
+P02D                              IOP0,2
+P02OE                             OEP0,2
+P02PU                             PUP0,2
+P03D                              IOP0,3
+P03OE                             OEP0,3
+P03PU                             PUP0,3
+P04D                              IOP0,4
+P04OE                             OEP0,4
+P04PU                             PUP0,4
+P40CON                            P4CON,0
+P40D                              IOP4,0
+P40OE                             OEP4,0
+P40PU                             PUP4,0
+P41CON                            P4CON,1
+P41D                              IOP4,1
+P41OE                             OEP4,1
+P41PU                             PUP4,1
+P42CON                            P4CON,2
+P42D                              IOP4,2
+P42OE                             OEP4,2
+P42PU                             PUP4,2
+P43CON                            P4CON,3
+P43D                              IOP4,3
+P43OE                             OEP4,3
+P43PU                             PUP4,3
+P44CON                            P4CON,4
+P44D                              IOP4,4
+P44OE                             OEP4,4
+P44PU                             PUP4,4
+P53D                              IOP5,3
+P53OE                             OEP5,3
+P53PU                             PUP5,3
+P54D                              IOP5,4
+P54OE                             OEP5,4
+P54PU                             PUP5,4
+PC0                               PCL,0
+PC1                               PCL,1
+PC2                               PCL,2
+PC3                               PCL,3
+PC4                               PCL,4
+PC5                               PCL,5
+PC6                               PCL,6
+PC7                               PCL,7
+PC8                               PCH,0
+PC9                               PCH,1
+PD                                PFLAG,6
+PWM0OE                            T0CR,0
+PWM1OE                            T1CR,0
+STKP0                             MCR,0
+STKP1                             MCR,1
+STKP2                             MCR,2
+STKR0B0                           STKR0L,0
+STKR0B1                           STKR0L,1
+STKR0B2                           STKR0L,2
+STKR0B3                           STKR0L,3
+STKR0B4                           STKR0L,4
+STKR0B5                           STKR0L,5
+STKR0B6                           STKR0L,6
+STKR0B7                           STKR0L,7
+STKR0B8                           STKR0H,0
+STKR0B9                           STKR0H,1
+STKR1B0                           STKR1L,0
+STKR1B1                           STKR1L,1
+STKR1B2                           STKR1L,2
+STKR1B3                           STKR1L,3
+STKR1B4                           STKR1L,4
+STKR1B5                           STKR1L,5
+STKR1B6                           STKR1L,6
+STKR1B7                           STKR1L,7
+STKR1B8                           STKR1H,0
+STKR1B9                           STKR1H,1
+STKR2B0                           STKR2L,0
+STKR2B1                           STKR2L,1
+STKR2B2                           STKR2L,2
+STKR2B3                           STKR2L,3
+STKR2B4                           STKR2L,4
+STKR2B5                           STKR2L,5
+STKR2B6                           STKR2L,6
+STKR2B7                           STKR2L,7
+STKR2B8                           STKR2H,0
+STKR2B9                           STKR2H,1
+STKR3B0                           STKR3L,0
+STKR3B1                           STKR3L,1
+STKR3B2                           STKR3L,2
+STKR3B3                           STKR3L,3
+STKR3B4                           STKR3L,4
+STKR3B5                           STKR3L,5
+STKR3B6                           STKR3L,6
+STKR3B7                           STKR3L,7
+STKR3B8                           STKR3H,0
+STKR3B9                           STKR3H,1
+T0CKS                             T0CR,3
+T0CNT0                            T0CNT,0
+T0CNT1                            T0CNT,1
+T0CNT2                            T0CNT,2
+T0CNT3                            T0CNT,3
+T0CNT4                            T0CNT,4
+T0CNT5                            T0CNT,5
+T0CNT6                            T0CNT,6
+T0CNT7                            T0CNT,7
+T0EN                              T0CR,7
+T0ICKS                            TMRCR,2
+T0IE                              INTE,5
+T0IF                              INTF,5
+T0LDEN                            T0CR,2
+T0LDR0                            T0LDR,0
+T0LDR1                            T0LDR,1
+T0LDR2                            T0LDR,2
+T0LDR3                            T0LDR,3
+T0LDR4                            T0LDR,4
+T0LDR5                            T0LDR,5
+T0LDR6                            T0LDR,6
+T0LDR7                            T0LDR,7
+T0PRS0                            T0CR,4
+T0PRS1                            T0CR,5
+T0PRS2                            T0CR,6
+T0WUEN                            TMRCR,1
+T1CKS                             T1CR,3
+T1CNT0                            T1CNT,0
+T1CNT1                            T1CNT,1
+T1CNT2                            T1CNT,2
+T1CNT3                            T1CNT,3
+T1CNT4                            T1CNT,4
+T1CNT5                            T1CNT,5
+T1CNT6                            T1CNT,6
+T1CNT7                            T1CNT,7
+T1EN                              T1CR,7
+T1ICKS                            TMRCR,3
+T1IE                              INTE,6
+T1IF                              INTF,6
+T1LDEN                            T1CR,2
+T1LDR0                            T1LDR,0
+T1LDR1                            T1LDR,1
+T1LDR2                            T1LDR,2
+T1LDR3                            T1LDR,3
+T1LDR4                            T1LDR,4
+T1LDR5                            T1LDR,5
+T1LDR6                            T1LDR,6
+T1LDR7                            T1LDR,7
+T1PRS0                            T1CR,4
+T1PRS1                            T1CR,5
+T1PRS2                            T1CR,6
+TO                                PFLAG,7
+VEREN                             VREFCR,7
+WDTCR0                            WDTCR,0
+WDTCR1                            WDTCR,1
+WDTCR2                            WDTCR,2
+WDTCR3                            WDTCR,3
+WDTCR4                            WDTCR,4
+WDTCR5                            WDTCR,5
+WDTCR6                            WDTCR,6
+WDTCR7                            WDTCR,7
+Z                                 PFLAG,0
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     0 reported,     0 suppressed
+
+

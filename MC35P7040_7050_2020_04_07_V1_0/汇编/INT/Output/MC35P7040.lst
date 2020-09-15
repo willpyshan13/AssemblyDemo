@@ -1,0 +1,115 @@
+gplink-2.2.18 (Apr 13 2020)
+Listing File Generated: 2020-9-14  00:07:23
+ 
+ 
+Address  Value    Disassembly              Source
+-------  -----    -----------              ------
+                                           ;******************************************************************************
+                                           ;  *   	@MCU   	   	   	   	 : MC35P7040
+                                           ;  *   	@Create Date         : 2020.01.09
+                                           ;  *   	@Author/Corporation  : Martin/SinoMCU
+                                           ;  *   	@技术支持QQ群   	  : 814641858      
+                                           ;  *    @晟矽微官方论坛   	  : http://bbs.sinomcu.com/	 
+                                           ;  *   	@Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+                                           ;  *----------------------Abstract Description---------------------------------    	
+                                           ;  *           P00,P01上拉，外部中断下降沿触发，P02、P03翻转（未消抖处理）
+                                           ;******************************************************************************
+                                           #include "MC35P7040.INC"   
+                                           		LIST
+                                           ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                                           		NOLIST
+                                           
+                                               ORG    	0x0000
+000000   8018     goto    0x18                	goto   	MAIN
+                                              	ORG	   	0x8
+                                           
+                                           INT_ISR:
+000008   0400     push                        	push
+000009   58c8     jbset   0xc8, 0             	JBSET  	INT0IF
+00000a   8010     goto    0x10                	GOTO   	INT1_INTERR
+00000b   58c9     jbset   0xc9, 0             	JBSET  	INT0IE
+00000c   8010     goto    0x10                	GOTO   	INT1_INTERR
+00000d   40c8     bclr    0xc8, 0             	BCLR   	INT0IF
+00000e   2d10     movai   0x10                 MOVAI  	00010000B
+00000f   1cd5     xorra   0xd5                	XORRA  	IOP5   	   	    ;  P54D取反
+                                           
+                                           
+                                           INT1_INTERR:
+000010   59c8     jbset   0xc8, 0x1           	JBSET  	INT1IF
+000011   8017     goto    0x17                	GOTO   	INT_END
+000012   59c9     jbset   0xc9, 0x1           	JBSET  	INT1IE
+000013   8017     goto    0x17                	GOTO   	INT_END
+000014   41c8     bclr    0xc8, 0x1           	BCLR   	INT1IF
+000015   2d08     movai   0x8                  MOVAI  	00001000B
+000016   1cd0     xorra   0xd0                	XORRA  	IOP0   	   	    ;  P03D取反
+                                           
+                                           INT_END:
+000017   0f00     retie                       	RETIE  	
+                                           
+                                           MAIN:  	
+000018   c01b     call    0x1b                	CALL   	Sys_Init
+                                           MAIN_LOOP:
+000019   8019     goto    0x19                	GOTO   	MAIN_LOOP
+00001a   0e00     return                      	RETURN 	
+                                           ; exit point of main
+                                           
+                                           Sys_Init:
+00001b   47df     bclr    0xdf, 0x7           	BCLR   	GIE
+00001c   c036     call    0x36                	CALL   	CLR_RAM
+00001d   c026     call    0x26                	CALL    IO_Init
+00001e   c021     call    0x21                	CALL   	INT_Init  
+00001f   4fdf     bset    0xdf, 0x7           	BSET   	GIE
+000020   0e00     return                      	RETURN 	
+                                           ; exit point of Sys_Init
+                                           
+                                           INT_Init:  	
+000021   48c9     bset    0xc9, 0             	BSET   	INT0IE
+000022   49c9     bset    0xc9, 0x1           	BSET   	INT1IE  ;使能外部中断
+000023   2d10     movai   0x10                	MOVAI  	0x10    
+000024   1fbf     movra   0xbf                	MOVRA  	EINTCR  ;下降沿触发
+000025   0e00     return                      	RETURN 	
+                                           ; exit point of INT_Init
+                                           
+                                           IO_Init:
+000026   2bd0     clrr    0xd0                	CLRR   	IOP0    ;io口数据位
+000027   2dfc     movai   0xfc                	MOVAI  	0xfc
+000028   1fb8     movra   0xb8                	MOVRA  	OEP0    ;io口方向 1:out  0:in  
+000029   2d03     movai   0x3                 	MOVAI  	0x03
+00002a   1fe0     movra   0xe0                	MOVRA  	PUP0    ;io口上拉电阻   1:enable  0:disable
+00002b   2bd4     clrr    0xd4                	CLRR   	IOP4    ;io口数据位
+00002c   2df0     movai   0xf0                	MOVAI  	0xf0
+00002d   1fc4     movra   0xc4                	MOVRA  	OEP4    ;io口方向 1:out  0:in   
+00002e   2be4     clrr    0xe4                	CLRR   	PUP4    ;io口上拉电阻   1:enable  0:disable
+00002f   2bd5     clrr    0xd5                	CLRR   	IOP5    ;io口数据位
+000030   2dff     movai   0xff                	MOVAI  	0xff
+000031   1fc5     movra   0xc5                	MOVRA  	OEP5    ;io口方向 1:out  0:in  
+000032   2be5     clrr    0xe5                	CLRR   	PUP5    ;io口上拉电阻   1:enable  0:disable
+000033   2dff     movai   0xff                	MOVAI  	0xff
+000034   1fae     movra   0xae                	MOVRA  	P4CON
+000035   0e00     return                      	RETURN 	
+                                           ; exit point of IO_Init
+                                           
+                                           CLR_RAM:
+000036   2d3f     movai   0x3f                	movai 0x3F
+000037   1f83     movra   0x83                	movra FSR0
+000038   2b84     clrr    0x84                	clrr FSR1
+000039   2be7     clrr    0xe7                	clrr INDF
+00003a   2683     djzr    0x83                	DJZR FSR0
+00003b   8039     goto    0x39                	goto $-2
+00003c   2be7     clrr    0xe7                	clrr INDF
+00003d   0e00     return                      	RETURN 	
+                                           ; exit point of CLR_RAM
+                                           
+                                           
+                                              	end
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : XX-------------- XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXX----
+
+All other memory blocks unused.
+
+Program Memory Words Used:    55
+
