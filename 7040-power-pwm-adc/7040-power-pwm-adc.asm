@@ -1,15 +1,12 @@
 ;******************************************************************************
 ;  *   	@MCU   	   	   	   	 : MC35P7040
-;  *   	@Create Date         : 2020.01.09
-;  *   	@Author/Corporation  : Martin/SinoMCU
-;  *   	@技术支持QQ群   	  : 814641858      
-;  *    @晟矽微官方论坛   	  : http://bbs.sinomcu.com/	 
-;  *   	@Copyright           : 2019 SINOMCU Corporation,All Rights Reserved.
+;  *   	@Create Date         : 2020.09.25
+;  *   	@Author              : pengyushan
 ;  *----------------------Abstract Description---------------------------------        	
 ;  	   	   	P54 1ms翻转,P53输出PWM,P00唤醒,P40.P41.VDDAD采集  
-;          	 两个校准实际应用是二选一
-;          	 偏0   选零点校准
-;          	 偏vdd 选顶点校准 
+;          	 
+;           选零点校准
+;          	 
 ;******************************************************************************
 
 #include "MC35P7040.INC"
@@ -139,136 +136,12 @@ ADC_ADJ_INIT:
        	JBSET  	Z
        	GOTO   	ADC_ADJ_INIT   	   	;demo演示 ，此处校准失败一直校准，处于循环
    	   	
-   ;   	   	CALL   	ADC_Vertex_ADJ
-   ;       	MOVRA  	r0x0001
-   ;       	MOVAR   r0x0001
-   ;       	JBSET  	Z
-   ;       	GOTO   	ADC_ADJ_INIT   	   	;demo演示 ，此处校准失败一直校准，处于循环
-
-       	;CALL   	TIMER0_INT_Init  
+       	;CALL      	TIMER0_INT_Init  
        	CALL   	TIMER1_PWM_Init   
        	CALL   	ADC_Init
        	BSET   	GIE
        	RETURN 	
-    ; exit point of _Sys_Init
-ADC_Vertex_ADJ:
-    ;  	顶点校准   ADTR[4:0]=0x10
-       	MOVAI  	0xd0
-       	MOVRA   ADT
-       	CLRR   	VREFCR 	;  内部2V
-       	CLRR   	ADR	; 64分频
-       	BSET   	GCHS
-       	BSET   	ADEN
-       	BCLR   	ADEOC
-       	BSET   	ADSTR
 
-       	JBSET  	ADEOC
-       	GOTO   	$-1
-    ;  结果是否为0x0fff
-       	MOVAR  	ADB
-       	XORAI  	0xff
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_ADD
-       	MOVAI  	0x0f
-       	ANDAR  	ADR
-       	XORAI  	0x0f
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_ADD
-
-       	MOVAI  	0xe0
-       	ANDRA  	ADT
-
-       	MOVAI  	0x0f
-       	ORRA   	ADT
-       	BCLR   	ADEOC
-       	BSET   	ADSTR
-
-       	JBSET  	ADEOC
-       	GOTO   	$-1
-    ;  	结果是否为0x0fff
-       	MOVAR  	ADB
-       	XORAI  	0xff
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_DEC
-       	MOVAI  	0x0f
-       	ANDAR  	ADR
-       	XORAI  	0x0f
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_DEC
-
-       	MOVAI  	0x3f
-       	ANDRA  	ADT	   	   	;正常模式
-   	   	BCLR   	ADEN
-       	MOVAI  	0x00   	   	;PASS
-       	GOTO   	ADC_VER_ADJ_END 
-ADC_ADJ_VER_DEC:
-       	MOVAR  	ADT
-       	ANDAI  	0x0f
-       	JBCLR  	Z
-       	GOTO   	ADC_ADJ_VER_FAIL1
-       	DJZR   	ADT
-       	NOP	
-       	BCLR   	ADEOC
-       	BSET   	ADSTR
-
-       	JBSET  	ADEOC
-       	GOTO   	$-1
-    ;  结果是否为0x0fff
-       	MOVAR  	ADB
-       	XORAI  	0xff
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_DEC
-       	MOVAI  	0x0f
-       	ANDAR  	ADR
-       	XORAI  	0x0f
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_DEC
-    ;   正常模式
-       	MOVAI  	0x3f
-       	ANDRA  	ADT
-   	   	BCLR   	ADEN
-       	MOVAI  	0x00   	;PASS
-       	GOTO   	ADC_VER_ADJ_END
-ADC_ADJ_VER_FAIL1:
-   	   	MOVAI  	0x3f
-       	ANDRA  	ADT	   	   	;正常模式
-   	   	BCLR   	ADEN
-       	MOVAI  	0x01   	   	   	;FAIL
-       	GOTO   	ADC_VER_ADJ_END
-ADC_ADJ_VER_ADD:   	
-       	MOVAI  	0x0f
-       	ANDAR  	ADT
-       	XORAI  	0x0f   	   	;是否加到0x0f 
-       	JBSET  	Z
-       	GOTO   	$+2
-       	GOTO   	ADC_ADJ_VER_FAIL1
-
-       	MOVAI  	0x01
-       	ADDRA  	ADT
-       	BCLR   	ADEOC
-       	BSET   	ADSTR
-
-       	JBSET  	ADEOC
-       	GOTO   	$-1
-    ; 结果是否为0x0fff
-       	MOVAR  	ADB
-       	XORAI  	0xff
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_ADD
-       	MOVAI  	0x0f
-       	ANDAR  	ADR
-       	XORAI  	0x0f
-       	JBSET  	Z
-       	GOTO   	ADC_ADJ_VER_ADD
- 
-       	MOVAI  	0x3f   	
-   	   	BCLR   	ADEN
-       	ANDRA  	ADT	   ;正常模式
-       	MOVAI  	0x00   ;PASS
-ADC_VER_ADJ_END:
-       	RETURN 	
-    ; exit point of _ADC_Vertex_ADJ
-    
 ADC_Zero_ADJ:
        	MOVAI  	0x80
        	MOVRA  	ADT	   	;零点校准   ADTR[4:0]=0
@@ -432,8 +305,6 @@ CLR_RAM:
        	clrr   	INDF
        	RETURN 	
     ; exit point of _CLR_RAM
-    
-    
        	end
 
 

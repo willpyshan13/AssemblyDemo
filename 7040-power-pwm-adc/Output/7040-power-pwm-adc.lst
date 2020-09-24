@@ -1,0 +1,336 @@
+gplink-2.2.18 (Apr 13 2020)
+Listing File Generated: 2020-9-25  00:04:15
+ 
+ 
+Address  Value    Disassembly              Source
+-------  -----    -----------              ------
+                                           ;******************************************************************************
+                                           ;  *   	@MCU   	   	   	   	 : MC35P7040
+                                           ;  *   	@Create Date         : 2020.09.25
+                                           ;  *   	@Author              : pengyushan
+                                           ;  *----------------------Abstract Description---------------------------------        	
+                                           ;  	   	   	P54 1ms翻转,P53输出PWM,P00唤醒,P40.P41.VDDAD采集  
+                                           ;          	 
+                                           ;          	 偏0   选零点校准
+                                           ;          	 
+                                           ;******************************************************************************
+                                           
+                                           #include "MC35P7040.INC"
+                                           		LIST
+                                           ;mc35p7040.inc    Standard Header File, Version 1.00 by Sinomcu
+                                           		NOLIST
+                                           
+                                           cblock 0x0000
+                                           r0x0001
+                                           timer0_count1:2
+                                           flag1
+                                           endc
+                                           
+                                           #define	FLAG_TIMER0_5000ms 	flag1,0
+                                           
+                                           
+                                                   org    	0x0000
+000000   8024     goto    0x24                     goto   	MAIN   	   	
+                                           
+                                                   org    	0x8
+000008   8009     goto    0x9                      goto   	INT_ISR	   	;中断
+                                              
+                                           
+                                           INT_ISR:
+000009   0400     push                            	push
+                                                  	
+00000a   5dc8     jbset   0xc8, 0x5               	JBSET   T0IF
+00000b   8022     goto    0x22                    	GOTO   	INTER_END
+00000c   5dc9     jbset   0xc9, 0x5               	JBSET  	T0IE
+00000d   8022     goto    0x22                    	GOTO   	INTER_END
+00000e   45c8     bclr    0xc8, 0x5               	BCLR   	T0IF
+00000f   2d08     movai   0x8                 	   	MOVAI  	00001000B
+000010   1cd5     xorra   0xd5                	   	XORRA  	IOP5   	   	    ;  P54D取反
+                                           
+000011   1601     jzr     0x1                     	JZR    	timer0_count1
+000012   8015     goto    0x15                	   	GOTO   	$+3
+000013   1602     jzr     0x2                     	JZR    	(timer0_count1 + 1)
+000014   0000     nop                         	   	NOP
+                                                  	;timer0_count1 >= 5000
+000015   2d13     movai   0x13                    	MOVAI  	0x13
+000016   2202     asubar  0x2                     	ASUBAR 	(timer0_count1 + 1)
+000017   5a86     jbset   0x86, 0x2               	JBSET  	C
+000018   8022     goto    0x22                	   	GOTO   	INTER_END
+000019   5886     jbset   0x86, 0             	   	JBSET  	Z
+00001a   8022     goto    0x22                	   	GOTO   	INTER_END
+00001b   2d88     movai   0x88                    	MOVAI  	0x88
+00001c   2201     asubar  0x1                     	ASUBAR 	timer0_count1
+00001d   5a86     jbset   0x86, 0x2               	JBSET  	C
+00001e   8022     goto    0x22                    	GOTO   	INTER_END
+                                           
+00001f   2b01     clrr    0x1                     	CLRR   	timer0_count1
+000020   2b02     clrr    0x2                     	CLRR   	(timer0_count1 + 1)
+000021   4803     bset    0x3, 0                  	BSET   	FLAG_TIMER0_5000ms
+                                           INTER_END:
+000022   0500     pop                             	pop
+                                                  	
+000023   0f00     retie                           	RETIE  	
+                                           
+                                           MAIN:
+000024   c053     call    0x53                    	CALL   	Sys_Init
+                                           
+                                           MAIN_LOOP:
+                                           ;*****************AD采集**********************
+000025   1eb1     movar   0xb1                	   	MOVAR  	ADM
+000026   2af8     andai   0xf8                	   	ANDAI  	0xf8   	   	   	
+000027   1a00     orai    0                   	   	ORAI   	0x00   	;通道0   	   	P40
+000028   1fb1     movra   0xb1                	   	MOVRA  	ADM
+000029   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	
+00002a   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	;切换通道舍去前面两次采集
+00002b   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	;demo演示，实际使用客户自行滤波     	
+00002c   1eb1     movar   0xb1                	   	MOVAR  	ADM
+00002d   2af8     andai   0xf8                	   	ANDAI  	0xf8   	   	   	
+00002e   1a01     orai    0x1                 	   	ORAI   	0x01   	;通道1   	   	P41
+00002f   1fb1     movra   0xb1                	   	MOVRA  	ADM
+000030   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	
+000031   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	;切换通道舍去前面两次采集
+000032   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	;demo演示，实际使用客户自行滤波 
+000033   1eb1     movar   0xb1                	   	MOVAR  	ADM
+000034   2af8     andai   0xf8                	   	ANDAI  	0xf8   	   	   	
+000035   1a05     orai    0x5                 	   	ORAI   	0x05   	;通道VDD     	
+000036   1fb1     movra   0xb1                	   	MOVRA  	ADM
+000037   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	
+000038   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	;切换通道舍去前面两次采集
+000039   c04e     call    0x4e                	   	CALL   	ADC_Get_Value  	;demo演示，实际使用客户自行滤波 
+                                           ;*****************休眠************************
+                                              	   	;5000ms进入休眠
+00003a   5803     jbset   0x3, 0                  	JBSET  	FLAG_TIMER0_5000ms
+00003b   8025     goto    0x25                    	GOTO   	MAIN_LOOP
+00003c   4003     bclr    0x3, 0                  	BCLR   	FLAG_TIMER0_5000ms
+                                              	  ;    	休眠关闭外设
+00003d   47df     bclr    0xdf, 0x7               	BCLR   	GIE
+00003e   47b1     bclr    0xb1, 0x7               	BCLR   	ADEN
+00003f   40dc     bclr    0xdc, 0                 	BCLR   	PWM1OE
+000040   47dc     bclr    0xdc, 0x7               	BCLR   	T1EN
+000041   2bd5     clrr    0xd5                    	CLRR   	IOP5
+000042   0000     nop                             	nop
+000043   2de7     movai   0xe7                    	MOVAI  	0xe7
+000044   29ca     andra   0xca                    	ANDRA  	OSCM
+000045   4bca     bset    0xca, 0x3               	BSET   	OSCM,3
+000046   0000     nop                             	nop   
+000047   0000     nop                             	nop
+000048   0000     nop                             	nop	
+000049   4fdf     bset    0xdf, 0x7               	BSET   	GIE
+00004a   48dc     bset    0xdc, 0                 	BSET   	PWM1OE
+00004b   4fdc     bset    0xdc, 0x7               	BSET   	T1EN
+                                              	   	 ; 唤醒后开启外设
+00004c   4fb1     bset    0xb1, 0x7               	BSET   	ADEN
+00004d   8025     goto    0x25                    	GOTO   	MAIN_LOOP
+                                           
+                                           
+                                           ADC_Get_Value:
+00004e   45b1     bclr    0xb1, 0x5               	BCLR   	ADEOC
+00004f   4eb1     bset    0xb1, 0x6               	BSET   	ADSTR
+000050   5db1     jbset   0xb1, 0x5               	JBSET  	ADEOC
+000051   8050     goto    0x50                    	GOTO   	$-1
+000052   0e00     return                          	RETURN 	
+                                               ; exit point of _ADC_Get_Value
+                                               
+                                           Sys_Init:
+000053   47df     bclr    0xdf, 0x7               	BCLR   	GIE
+000054   c0d9     call    0xd9                    	CALL   	CLR_RAM
+000055   c0c9     call    0xc9                    	CALL   	IO_Init
+                                           ADC_ADJ_INIT:
+                                              	   	;        两个校准实际应用是二选一
+                                              	   	;        偏0   选零点校准
+                                              	   	;        偏vdd 选顶点校准 
+000056   c05f     call    0x5f                    	CALL   	ADC_Zero_ADJ
+000057   1f00     movra   0                       	MOVRA  	r0x0001
+000058   1e00     movar   0                       	MOVAR   r0x0001
+000059   5886     jbset   0x86, 0                 	JBSET  	Z
+00005a   8056     goto    0x56                    	GOTO   	ADC_ADJ_INIT   	   	;demo演示 ，此处校准失败一直校准，处于循环
+                                              	   	
+                                                  	;CALL      	TIMER0_INT_Init  
+00005b   c0bb     call    0xbb                    	CALL   	TIMER1_PWM_Init   
+00005c   c0b5     call    0xb5                    	CALL   	ADC_Init
+00005d   4fdf     bset    0xdf, 0x7               	BSET   	GIE
+00005e   0e00     return                          	RETURN 	
+                                           
+                                           ADC_Zero_ADJ:
+00005f   2d80     movai   0x80                    	MOVAI  	0x80
+000060   1fb4     movra   0xb4                    	MOVRA  	ADT	   	;零点校准   ADTR[4:0]=0
+000061   2baf     clrr    0xaf                    	CLRR   	VREFCR 	    ;内部2V
+000062   2bb3     clrr    0xb3                    	CLRR   	ADR	   ;64分频
+000063   4cb1     bset    0xb1, 0x4               	BSET   	GCHS
+000064   4fb1     bset    0xb1, 0x7               	BSET   	ADEN
+000065   45b1     bclr    0xb1, 0x5               	BCLR   	ADEOC
+000066   4eb1     bset    0xb1, 0x6               	BSET   	ADSTR
+                                           
+000067   5db1     jbset   0xb1, 0x5               	JBSET  	ADEOC
+000068   8067     goto    0x67                    	GOTO   	$-1
+                                               ;  	结果是否为0
+000069   1eb2     movar   0xb2                    	MOVAR   ADB
+00006a   5886     jbset   0x86, 0                 	JBSET  	Z
+00006b   809d     goto    0x9d                    	GOTO   	ADC_ADJ_ZERO_ADD
+00006c   1eb3     movar   0xb3                    	MOVAR  	ADR
+00006d   2a0f     andai   0xf                     	ANDAI  	0x0f
+00006e   5886     jbset   0x86, 0                 	JBSET  	Z
+00006f   809d     goto    0x9d                    	GOTO   	ADC_ADJ_ZERO_ADD
+000070   2d1f     movai   0x1f                    	MOVAI  	0x1f
+000071   19b4     orra    0xb4                    	ORRA   	ADT
+000072   45b1     bclr    0xb1, 0x5               	BCLR   	ADEOC
+000073   4eb1     bset    0xb1, 0x6               	BSET   	ADSTR
+                                           
+000074   5db1     jbset   0xb1, 0x5               	JBSET  	ADEOC
+000075   8074     goto    0x74                    	GOTO   	$-1
+                                               ;  	结果是否为0
+000076   1eb2     movar   0xb2                    	MOVAR   ADB
+000077   5886     jbset   0x86, 0                 	JBSET  	Z
+000078   8082     goto    0x82                    	GOTO   	ADC_ADJ_ZERO_DEC
+000079   1eb3     movar   0xb3                    	MOVAR  	ADR
+00007a   2a0f     andai   0xf                     	ANDAI  	0x0f
+00007b   5886     jbset   0x86, 0                 	JBSET  	Z
+00007c   8082     goto    0x82                    	GOTO   	ADC_ADJ_ZERO_DEC
+                                               ;  正常模式
+00007d   2d3f     movai   0x3f                    	MOVAI  	0x3f
+00007e   29b4     andra   0xb4                    	ANDRA  	ADT  
+00007f   47b1     bclr    0xb1, 0x7           	   	BCLR   	ADEN
+000080   2d00     movai   0                       	MOVAI  	0x00   	   	;PASS
+000081   80b4     goto    0xb4                    	GOTO   	ADC_ZERO_ADJ_END
+                                           ADC_ADJ_ZERO_DEC:
+000082   1eb4     movar   0xb4                    	MOVAR  	ADT
+000083   2a0f     andai   0xf                     	ANDAI  	0x0f
+000084   5086     jbclr   0x86, 0                 	JBCLR  	Z
+000085   8098     goto    0x98                    	GOTO   	ADC_ADJ_ZERO_FAIL1
+000086   26b4     djzr    0xb4                    	DJZR   	ADT
+000087   0000     nop                             	NOP	
+000088   45b1     bclr    0xb1, 0x5               	BCLR   	ADEOC
+000089   4eb1     bset    0xb1, 0x6               	BSET   	ADSTR
+                                           
+00008a   5db1     jbset   0xb1, 0x5               	JBSET  	ADEOC
+00008b   808a     goto    0x8a                    	GOTO   	$-1
+                                               ;  结果是否为0
+00008c   1eb2     movar   0xb2                    	MOVAR   ADB
+00008d   5886     jbset   0x86, 0                 	JBSET  	Z
+00008e   8082     goto    0x82                    	GOTO   	ADC_ADJ_ZERO_DEC
+00008f   1eb3     movar   0xb3                    	MOVAR  	ADR
+000090   2a0f     andai   0xf                     	ANDAI  	0x0f
+000091   5886     jbset   0x86, 0                 	JBSET  	Z
+000092   8082     goto    0x82                    	GOTO   	ADC_ADJ_ZERO_DEC
+                                               ;  	正常模式
+000093   2d3f     movai   0x3f                    	MOVAI  	0x3f
+000094   29b4     andra   0xb4                    	ANDRA  	ADT
+000095   47b1     bclr    0xb1, 0x7           	   	BCLR   	ADEN
+000096   2d00     movai   0                       	MOVAI  	0x00   	;PASS
+000097   80b4     goto    0xb4                    	GOTO   	ADC_ZERO_ADJ_END
+                                           ADC_ADJ_ZERO_FAIL1:
+000098   2d3f     movai   0x3f                	   	MOVAI  	0x3f
+000099   29b4     andra   0xb4                    	ANDRA  	ADT	   	   	;正常模式
+00009a   47b1     bclr    0xb1, 0x7           	   	BCLR   	ADEN
+00009b   2d01     movai   0x1                     	MOVAI  	0x01   	;FAIL
+00009c   80b4     goto    0xb4                    	GOTO   	ADC_ZERO_ADJ_END
+                                           ADC_ADJ_ZERO_ADD:
+00009d   2d0f     movai   0xf                 	   	MOVAI  	0x0f
+00009e   28b4     andar   0xb4                    	ANDAR  	ADT
+00009f   1d0f     xorai   0xf                     	XORAI  	0x0f
+0000a0   5886     jbset   0x86, 0                 	JBSET  	Z
+0000a1   80a3     goto    0xa3                    	GOTO   	$+2
+0000a2   8098     goto    0x98                    	GOTO   	ADC_ADJ_ZERO_FAIL1
+                                           
+0000a3   2d01     movai   0x1                     	MOVAI  	0x01
+0000a4   13b4     addra   0xb4                    	ADDRA  	ADT
+0000a5   45b1     bclr    0xb1, 0x5               	BCLR   	ADEOC
+0000a6   4eb1     bset    0xb1, 0x6               	BSET   	ADSTR
+                                           
+0000a7   5db1     jbset   0xb1, 0x5               	JBSET  	ADEOC
+0000a8   80a7     goto    0xa7                    	GOTO   	$-1
+                                               ;  	结果是否为0
+0000a9   1eb2     movar   0xb2                    	MOVAR   ADB
+0000aa   5886     jbset   0x86, 0                 	JBSET  	Z
+0000ab   809d     goto    0x9d                    	GOTO   	ADC_ADJ_ZERO_ADD
+0000ac   1eb3     movar   0xb3                    	MOVAR  	ADR
+0000ad   2a0f     andai   0xf                     	ANDAI  	0x0f
+0000ae   5886     jbset   0x86, 0                 	JBSET  	Z
+0000af   809d     goto    0x9d                    	GOTO   	ADC_ADJ_ZERO_ADD
+                                               ;   正常模式
+0000b0   2d3f     movai   0x3f                    	MOVAI  	0x3f
+0000b1   29b4     andra   0xb4                    	ANDRA  	ADT
+0000b2   47b1     bclr    0xb1, 0x7           	   	BCLR   	ADEN
+0000b3   2d00     movai   0                       	MOVAI  	0x00   	;PASS
+                                           ADC_ZERO_ADJ_END:
+0000b4   0e00     return                          	RETURN 	
+                                               ; exit point of _ADC_Zero_ADJ
+                                               
+                                           ADC_Init:
+0000b5   2bb1     clrr    0xb1                    	CLRR   	ADM
+0000b6   2d90     movai   0x90                    	MOVAI  	0x90
+0000b7   19b1     orra    0xb1                    	ORRA   	ADM
+0000b8   2baf     clrr    0xaf                    	CLRR   	VREFCR 	    ;  	内部2V
+0000b9   2bb3     clrr    0xb3                    	CLRR   	ADR	    ;   adc时钟  Fcpu/64
+0000ba   0e00     return                          	RETURN 	
+                                               ; exit point of _ADC_Init
+                                           TIMER1_PWM_Init:
+0000bb   2df1     movai   0xf1                    	MOVAI  	0xf1
+0000bc   1fdc     movra   0xdc                    	MOVRA  	T1CR
+                                               ;  开启T1    1分频  T1CLK内部时钟  开启PWM  256个周期
+0000bd   2d80     movai   0x80                    	MOVAI  	0x80
+0000be   1fde     movra   0xde                    	MOVRA  	T1LDR
+0000bf   0e00     return                          	RETURN 	
+                                               ; exit point of _TIMER1_PWM_Init 
+                                           TIMER0_INT_Init:
+                                               ; T1CLK=FCPU/2      T0CLK=FCPU/2    关闭T0溢出唤醒
+0000c0   2bd8     clrr    0xd8                    	CLRR   	TMRCR
+                                               ; 开启T0    32分频  T0CLK内部时钟  自动重载  关闭PWM
+0000c1   2da4     movai   0xa4                    	MOVAI  	0xa4
+0000c2   1fda     movra   0xda                    	MOVRA  	T0CR
+0000c3   2d83     movai   0x83                    	MOVAI  	0x83
+0000c4   1fdb     movra   0xdb                    	MOVRA  	T0CNT
+0000c5   2d83     movai   0x83                    	MOVAI  	0x83
+0000c6   1fcd     movra   0xcd                    	MOVRA  	T0LDR  	   	;  1ms
+0000c7   4dc9     bset    0xc9, 0x5               	BSET   	T0IE        ;开启t0中断
+0000c8   0e00     return                          	RETURN 	
+                                               ; exit point of _TIMER0_INT_Init
+                                               
+                                           IO_Init:
+0000c9   2bd0     clrr    0xd0                    	CLRR   	IOP0    
+0000ca   2dfe     movai   0xfe                    	MOVAI  	0xfe
+0000cb   1fb8     movra   0xb8                    	MOVRA  	OEP0   	   	;  io口方向 1:out  0:in
+0000cc   2d01     movai   0x1                     	MOVAI  	0x01
+0000cd   1fe0     movra   0xe0                    	MOVRA  	PUP0   	   	; io口上拉电阻   1:enable  0:disable
+0000ce   2bd4     clrr    0xd4                    	CLRR   	IOP4
+0000cf   2dfc     movai   0xfc                    	MOVAI  	0xfc
+0000d0   1fc4     movra   0xc4                    	MOVRA  	OEP4   	   	;  io口方向 1:out  0:in
+0000d1   2be4     clrr    0xe4                    	CLRR   	PUP4   	   	; io口上拉电阻   1:enable  0:disable
+0000d2   2bd5     clrr    0xd5                    	CLRR   	IOP5   
+0000d3   2dff     movai   0xff                    	MOVAI  	0xff
+0000d4   1fc5     movra   0xc5                    	MOVRA  	OEP5   	   	; io口方向 1:out  0:in
+0000d5   2be5     clrr    0xe5                    	CLRR   	PUP5       	; io口上拉电阻   1:enable  0:disable
+0000d6   2d03     movai   0x3                     	MOVAI  	0x03
+0000d7   1fae     movra   0xae                    	MOVRA  	P4CON  	   	; P40 P41模拟
+0000d8   0e00     return                          	RETURN 	
+                                               ; exit point of _IO_Init
+                                           CLR_RAM:
+0000d9   2d3f     movai   0x3f                    	movai  	0x3F
+0000da   1f83     movra   0x83                    	movra  	FSR0
+0000db   2b84     clrr    0x84                    	clrr   	FSR1
+0000dc   2be7     clrr    0xe7                    	clrr   	INDF
+0000dd   2683     djzr    0x83                    	DJZR   	FSR0
+0000de   80dc     goto    0xdc                    	goto   	$ -2
+0000df   2be7     clrr    0xe7                    	clrr   	INDF
+0000e0   0e00     return                          	RETURN 	
+                                               ; exit point of _CLR_RAM
+                                                  	end
+                                           
+                                           
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+0000 : XX-------------- XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0080 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+00C0 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0100 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0140 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0180 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+01C0 : XX-------------- ---------------- ---------------- ----------------
+
+All other memory blocks unused.
+
+Program Memory Words Used:   218
+
