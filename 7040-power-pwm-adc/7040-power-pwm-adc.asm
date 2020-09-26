@@ -3,7 +3,7 @@
 ;  *   	@Create Date         : 2020.09.25
 ;  *   	@Author              : pengyushan
 ;  *----------------------Abstract Description---------------------------------        	
-;  	   	   	P54 1ms翻转,P53输出PWM,P00唤醒,P40.P41.VDDAD采集  
+;  	   	   	P54 1ms翻转,P53输出PWM,P40.P41.VDDAD采集  
 ;          	 
 ;           选零点校准
 ;          	 
@@ -18,49 +18,9 @@ flag1
 endc
 
 #define	FLAG_TIMER0_5000ms 	flag1,0
-
-
         org    	0x0000
         goto   	MAIN   	   	
-
         org    	0x8
-        goto   	INT_ISR	   	;中断
-   
-
-INT_ISR:
-       	push
-       	
-       	JBSET   T0IF
-       	GOTO   	INTER_END
-       	JBSET  	T0IE
-       	GOTO   	INTER_END
-       	BCLR   	T0IF
-   	   	MOVAI  	00001000B
-   	   	XORRA  	IOP5   	   	    ;  P54D取反
-
-       	JZR    	timer0_count1
-   	   	GOTO   	$+3
-       	JZR    	(timer0_count1 + 1)
-   	   	NOP
-       	;timer0_count1 >= 5000
-       	MOVAI  	0x13
-       	ASUBAR 	(timer0_count1 + 1)
-       	JBSET  	C
-   	   	GOTO   	INTER_END
-   	   	JBSET  	Z
-   	   	GOTO   	INTER_END
-       	MOVAI  	0x88
-       	ASUBAR 	timer0_count1
-       	JBSET  	C
-       	GOTO   	INTER_END
-
-       	CLRR   	timer0_count1
-       	CLRR   	(timer0_count1 + 1)
-       	BSET   	FLAG_TIMER0_5000ms
-INTER_END:
-       	pop
-       	
-       	RETIE  	
 
 MAIN:
        	CALL   	Sys_Init
@@ -90,9 +50,9 @@ MAIN_LOOP:
    	   	CALL   	ADC_Get_Value  	;demo演示，实际使用客户自行滤波 
 ;*****************休眠************************
    	   	;5000ms进入休眠
-       	JBSET  	FLAG_TIMER0_5000ms
+       	;JBSET  	FLAG_TIMER0_5000ms
        	GOTO   	MAIN_LOOP
-       	BCLR   	FLAG_TIMER0_5000ms
+       	;BCLR   	FLAG_TIMER0_5000ms
    	  ;    	休眠关闭外设
        	BCLR   	GIE
        	BCLR   	ADEN
@@ -135,8 +95,6 @@ ADC_ADJ_INIT:
        	MOVAR   r0x0001
        	JBSET  	Z
        	GOTO   	ADC_ADJ_INIT   	   	;demo演示 ，此处校准失败一直校准，处于循环
-   	   	
-       	;CALL      	TIMER0_INT_Init  
        	CALL   	TIMER1_PWM_Init   
        	CALL   	ADC_Init
        	BSET   	GIE
